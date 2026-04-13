@@ -40,7 +40,7 @@ Certifique-se de ter o Flutter SDK e o Android Studio instalados na sua máquina
 
 1. Clone o repositório:
 ```bash
-git clone [https://github.com/seu-usuario/arvore_da_harmonia.git](https://github.com/seu-usuario/arvore_da_harmonia.git)
+git clone [https://github.com/smartielo/arvore_da_harmonia.git](https://github.com/smartielo/arvore_da_harmonia.git)
 ```
 
 2. Acesse a pasta do projeto:
