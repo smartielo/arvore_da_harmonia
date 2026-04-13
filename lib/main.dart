@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'creditos_page.dart';
 
 void main() {
   runApp(const ArvoreDaHarmoniaApp());
@@ -148,36 +149,69 @@ class _HomePageState extends State<HomePage> {
               );
             }),
 
-            // 3. CAMADA DE UI: AVISO VISUAL DE MODO DE COLOCAÇÃO ATIVO
+// 3. CAMADA DE UI: AVISO VISUAL DE MODO DE COLOCAÇÃO ATIVO
             if (isPlacingMode)
               Container(
-                color: Colors.green.withOpacity(0.2), // Um leve filtro verde para indicar que está ativo
+                color: Colors.green.withOpacity(0.2),
               ),
 
-            // 4. CAMADA DE UI: BOTÃO MODO PAIS
+            // 4. CAMADA DE UI: BARRA SUPERIOR (Créditos, Progresso e Cadeado)
             Positioned(
-              top: 50,
-              right: 20,
-              child: IconButton(
-                icon: const Icon(Icons.lock_outline, color: Colors.white, size: 32),
-                onPressed: _openParentMode,
-                tooltip: 'Área do Mestre',
-              ),
-            ),
+              top: 0,
+              left: 0,
+              right: 0,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // BOTÃO DE CRÉDITOS
+                      IconButton(
+                        icon: const Icon(Icons.info_outline, color: Colors.white, size: 32),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => CreditosPage()),
+                          );
+                        },
+                        tooltip: 'Créditos',
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.black26, // Fundo levemente escuro para dar contraste
+                        ),
+                      ),
 
-            // 5. CAMADA DE UI: PROGRESSO
-            Positioned(
-              top: 60,
-              left: 20,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.8),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  'Folhas: ${placedLeaves.length} / $weeklyGoal',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      // CONTADOR DE PROGRESSO
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.9),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))
+                            ]
+                        ),
+                        child: Text(
+                          'Folhas: ${placedLeaves.length} / $weeklyGoal',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            color: Colors.green,
+                          ),
+                        ),
+                      ),
+
+                      // BOTÃO MODO PAIS (Cadeado)
+                      IconButton(
+                        icon: const Icon(Icons.lock_outline, color: Colors.white, size: 32),
+                        onPressed: _openParentMode,
+                        tooltip: 'Área do Mestre',
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.black26,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -185,12 +219,14 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
 
-      // BOTÃO FLUTUANTE
+      // BOTÃO FLUTUANTE DE ADICIONAR FOLHA
       floatingActionButton: isPlacingMode
-          ? null // Esconde o botão '+' enquanto o usuário está escolhendo o local da folha
+          ? null
           : FloatingActionButton.large(
         onPressed: _activatePlacingMode,
         backgroundColor: Colors.green,
+        elevation: 6,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: const Icon(Icons.add, color: Colors.white, size: 40),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
