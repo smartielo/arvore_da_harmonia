@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'creditos_page.dart';
+import 'area_mestre_page.dart';
 
 void main() {
   runApp(const ArvoreDaHarmoniaApp());
@@ -31,20 +32,38 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   // =========================================================================
-  // ÁREA DO BACKEND
+  // ÁREA DO BACKEND & LÓGICA DE DADOS
   // =========================================================================
-  // BACKEND: atenção nisso. Em vez de salvar apenas um 'int' com a quantidade,
-  // agora será necessário salvar uma lista de objetos ou um JSON contendo
-  // as coordenadas (dx, dy) de cada folha já colocada.
-  List<Offset> placedLeaves = [];
-
-  // BACKEND: recuperar este valor da configuração da Área do Mestre.
+  int placedLeavesCount = 0;
   int weeklyGoal = 20;
 
+  // Posições fixas das folhas ajustadas para a sua árvore
+  final List<Offset> predefinedLeafPositions = [
+    const Offset(0.50, 0.30),
+    const Offset(0.40, 0.35),
+    const Offset(0.60, 0.35),
+    const Offset(0.35, 0.45),
+    const Offset(0.65, 0.45),
+    const Offset(0.50, 0.40),
+    const Offset(0.45, 0.50),
+    const Offset(0.55, 0.50),
+    const Offset(0.28, 0.55),
+    const Offset(0.72, 0.55),
+    const Offset(0.38, 0.58),
+    const Offset(0.62, 0.58),
+    const Offset(0.50, 0.48),
+    const Offset(0.30, 0.48),
+    const Offset(0.70, 0.48),
+    const Offset(0.42, 0.42),
+    const Offset(0.58, 0.42),
+    const Offset(0.45, 0.60),
+    const Offset(0.55, 0.60),
+    const Offset(0.50, 0.55),
+  ];
+
   // =========================================================================
-  // LÓGICA DE FRONTEND
+  // MÉTODOS DE AÇÃO
   // =========================================================================
-  bool isPlacingMode = false; // Controla se o usuário está prestes a colocar uma folha
 
   String getBackgroundImage() {
     final hour = DateTime.now().hour;
@@ -59,8 +78,8 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void _activatePlacingMode() {
-    if (placedLeaves.length >= weeklyGoal) {
+  void _addLeaf() {
+    if (placedLeavesCount >= weeklyGoal) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('A meta semanal já foi atingida!')),
       );
@@ -68,45 +87,58 @@ class _HomePageState extends State<HomePage> {
     }
 
     setState(() {
-      isPlacingMode = true;
+      placedLeavesCount++;
     });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Toque em qualquer lugar da árvore para colocar a folha!'),
-        duration: Duration(seconds: 2),
-      ),
-    );
-  }
-
-  void _handleScreenTap(TapDownDetails details, Size screenSize) {
-    if (!isPlacingMode) return; // Se não clicou no '+', o toque não faz nada
-
-    setState(() {
-      // Transformamos os pixels exatos do toque em uma porcentagem (0.0 a 1.0)
-      // Isso garante que a folha fique no mesmo galho em qualquer tamanho de celular
-      double relativeX = details.localPosition.dx / screenSize.width;
-      double relativeY = details.localPosition.dy / screenSize.height;
-
-      placedLeaves.add(Offset(relativeX, relativeY));
-      isPlacingMode = false; // Desativa o modo após colocar a folha
-    });
-
-    // BACKEND: seguir com a rotina de salvar a lista 'placedLeaves' atualizada no banco local.
-    // BACKEND: verificar aqui se placedLeaves.length == weeklyGoal para disparar o evento do Fruto Dourado.
   }
 
   void _openParentMode() {
-    // BACKEND: integrar a validação do PIN de segurança antes de liberar o Navigator.
+    final TextEditingController pinController = TextEditingController();
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Modo Pais'),
-        content: const Text('BACKEND: Inserir teclado numérico para PIN aqui.'),
+        title: const Text('Acesso Restrito', textAlign: TextAlign.center),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Digite o PIN de 4 dígitos:'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: pinController,
+              keyboardType: TextInputType.number,
+              obscureText: true,
+              maxLength: 4,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 24, letterSpacing: 16),
+              decoration: InputDecoration(
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                counterText: '',
+              ),
+            ),
+          ],
+        ),
+        actionsAlignment: MainAxisAlignment.spaceEvenly,
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+            onPressed: () {
+              if (pinController.text == '1234') {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AreaMestrePage()),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('PIN incorreto!'), backgroundColor: Colors.red),
+                );
+              }
+            },
+            child: const Text('Entrar'),
           ),
         ],
       ),
@@ -115,115 +147,85 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // Pegamos o tamanho total da tela para calcular as posições
     final screenSize = MediaQuery.of(context).size;
 
     return Scaffold(
-      body: GestureDetector(
-        // O GestureDetector captura o toque na tela inteira
-        onTapDown: (details) => _handleScreenTap(details, screenSize),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // 1. CAMADA DE FUNDO
-            Image.asset(
-              getBackgroundImage(),
-              fit: BoxFit.cover,
-            ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // 1. CAMADA DE FUNDO (Agora faz todo o trabalho: Céu, Árvore e Grama juntos)
+          Image.asset(
+            getBackgroundImage(),
+            fit: BoxFit.cover,
+          ),
 
-            // 2. CAMADA DAS FOLHAS (Renderizadas dinamicamente onde o usuário tocou)
-            ...placedLeaves.map((pos) {
-              return Positioned(
-                // Multiplicamos a porcentagem pelo tamanho da tela para achar o pixel exato
-                // Subtraímos 20 para que o centro do ícone (que tem tamanho 40) fique exatamente onde o dedo tocou
-                left: (pos.dx * screenSize.width) - 20,
-                top: (pos.dy * screenSize.height) - 20,
-                child: const Icon(
-                  Icons.eco,
-                  color: Colors.lightGreenAccent,
-                  size: 40,
-                  shadows: [
-                    Shadow(color: Colors.black45, blurRadius: 4, offset: Offset(2, 2))
+          // 2. CAMADA DAS FOLHAS (Desenhadas diretamente por cima do fundo)
+          ...predefinedLeafPositions.take(placedLeavesCount).map((pos) {
+            return Positioned(
+              left: (pos.dx * screenSize.width) - 20,
+              top: (pos.dy * screenSize.height) - 20,
+              child: const Icon(
+                Icons.eco,
+                color: Colors.lightGreenAccent,
+                size: 40,
+                shadows: [
+                  Shadow(color: Colors.black45, blurRadius: 4, offset: Offset(2, 2))
+                ],
+              ),
+            );
+          }),
+
+          // 3. CAMADA DE UI: BARRA SUPERIOR
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.info_outline, color: Colors.white, size: 32),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const CreditosPage()),
+                        );
+                      },
+                      style: IconButton.styleFrom(backgroundColor: Colors.black26),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: const [
+                            BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))
+                          ]
+                      ),
+                      child: Text(
+                        'Folhas: $placedLeavesCount / $weeklyGoal',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.green),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.lock_outline, color: Colors.white, size: 32),
+                      onPressed: _openParentMode,
+                      style: IconButton.styleFrom(backgroundColor: Colors.black26),
+                    ),
                   ],
                 ),
-              );
-            }),
-
-// 3. CAMADA DE UI: AVISO VISUAL DE MODO DE COLOCAÇÃO ATIVO
-            if (isPlacingMode)
-              Container(
-                color: Colors.green.withOpacity(0.2),
-              ),
-
-            // 4. CAMADA DE UI: BARRA SUPERIOR (Créditos, Progresso e Cadeado)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // BOTÃO DE CRÉDITOS
-                      IconButton(
-                        icon: const Icon(Icons.info_outline, color: Colors.white, size: 32),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => CreditosPage()),
-                          );
-                        },
-                        tooltip: 'Créditos',
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.black26, // Fundo levemente escuro para dar contraste
-                        ),
-                      ),
-
-                      // CONTADOR DE PROGRESSO
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.9),
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: const [
-                              BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))
-                            ]
-                        ),
-                        child: Text(
-                          'Folhas: ${placedLeaves.length} / $weeklyGoal',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                            color: Colors.green,
-                          ),
-                        ),
-                      ),
-
-                      // BOTÃO MODO PAIS (Cadeado)
-                      IconButton(
-                        icon: const Icon(Icons.lock_outline, color: Colors.white, size: 32),
-                        onPressed: _openParentMode,
-                        tooltip: 'Área do Mestre',
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.black26,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
 
       // BOTÃO FLUTUANTE DE ADICIONAR FOLHA
-      floatingActionButton: isPlacingMode
-          ? null
-          : FloatingActionButton.large(
-        onPressed: _activatePlacingMode,
+      floatingActionButton: FloatingActionButton.large(
+        onPressed: _addLeaf,
         backgroundColor: Colors.green,
         elevation: 6,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
