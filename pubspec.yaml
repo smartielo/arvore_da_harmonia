@@ -65,6 +65,8 @@ flutter:
     - assets/images/tarde.png
     - assets/images/entardecer.png
     - assets/images/noite.png
+    - assets/images/logo_cc.jpg
+    - assets/images/logo_extensao.jpg
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

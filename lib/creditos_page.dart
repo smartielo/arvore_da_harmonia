@@ -9,8 +9,8 @@ class CreditosPage extends StatelessWidget {
       backgroundColor: const Color(0xFFF4F7F1),
       appBar: AppBar(
         title: const Text('Créditos'),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.deepPurple,
+        foregroundColor: Colors.white70,
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -50,24 +50,20 @@ class CreditosPage extends StatelessWidget {
             const Text('Desenvolvimento:', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             // FRONTEND: Adicionar a imagem do logo da Ciência da Computação nos assets depois
-            Container(
+            Image.asset(
+              'assets/images/logo_cc.jpg', // Confirme se o nome do arquivo está igual
               height: 60,
-              width: double.infinity,
-              color: Colors.grey[300],
-              alignment: Alignment.center,
-              child: const Text('Logo Ciência da Computação'),
+              fit: BoxFit.contain, // Isso garante que a imagem não fique esticada
             ),
 
             const SizedBox(height: 24),
             const Text('Apoio:', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             // FRONTEND: Adicionar a imagem do logo da Coordenadoria de Extensão nos assets depois
-            Container(
+            Image.asset(
+              'assets/images/logo_extensao.jpg', // Confirme se o nome do arquivo está igual
               height: 60,
-              width: double.infinity,
-              color: Colors.grey[300],
-              alignment: Alignment.center,
-              child: const Text('Logo Coordenadoria de Extensão'),
+              fit: BoxFit.contain, // Isso garante que a imagem não fique esticada
             ),
           ],
         ),
