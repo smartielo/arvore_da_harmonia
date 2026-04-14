@@ -34,31 +34,56 @@ class _HomePageState extends State<HomePage> {
   // =========================================================================
   // ÁREA DO BACKEND & LÓGICA DE DADOS
   // =========================================================================
-  int placedLeavesCount = 0;
-  int weeklyGoal = 20;
 
-  // Posições fixas das folhas ajustadas para a sua árvore
+  // Agora a lógica é 1 para 1: Cada avanço desenha 1 Moita inteira
+  int placedMoitasCount = 0;
+  int weeklyGoal = 60; // A meta agora significa "60 Moitas"
+
+  // 85 posições REVISADAS:
+  // - Removidas as posições Y < 0.30 (nada na lua)
+  // - Foco na expansão lateral (X indo de 0.20 até 0.80)
   final List<Offset> predefinedLeafPositions = [
-    const Offset(0.50, 0.30),
-    const Offset(0.40, 0.35),
-    const Offset(0.60, 0.35),
-    const Offset(0.35, 0.45),
-    const Offset(0.65, 0.45),
-    const Offset(0.50, 0.40),
-    const Offset(0.45, 0.50),
-    const Offset(0.55, 0.50),
-    const Offset(0.28, 0.55),
-    const Offset(0.72, 0.55),
-    const Offset(0.38, 0.58),
-    const Offset(0.62, 0.58),
-    const Offset(0.50, 0.48),
-    const Offset(0.30, 0.48),
-    const Offset(0.70, 0.48),
-    const Offset(0.42, 0.42),
-    const Offset(0.58, 0.42),
-    const Offset(0.45, 0.60),
-    const Offset(0.55, 0.60),
-    const Offset(0.50, 0.55),
+    // Centro e Miolo
+    const Offset(0.50, 0.45), const Offset(0.45, 0.48), const Offset(0.55, 0.48),
+    const Offset(0.50, 0.52), const Offset(0.40, 0.45), const Offset(0.60, 0.45),
+    const Offset(0.42, 0.40), const Offset(0.58, 0.40), const Offset(0.38, 0.52),
+
+    // Expansão Lateral Interna
+    const Offset(0.62, 0.52), const Offset(0.45, 0.56), const Offset(0.55, 0.56),
+    const Offset(0.35, 0.48), const Offset(0.65, 0.48), const Offset(0.48, 0.38),
+    const Offset(0.52, 0.38), const Offset(0.35, 0.42), const Offset(0.65, 0.42),
+
+    // Base e Laterais Médias
+    const Offset(0.32, 0.55), const Offset(0.68, 0.55), const Offset(0.40, 0.60),
+    const Offset(0.60, 0.60), const Offset(0.50, 0.58), const Offset(0.50, 0.35),
+    const Offset(0.30, 0.45), const Offset(0.70, 0.45), const Offset(0.28, 0.50),
+
+    // Extremidades e Pontas dos Galhos
+    const Offset(0.72, 0.50), const Offset(0.25, 0.55), const Offset(0.75, 0.55),
+    const Offset(0.45, 0.62), const Offset(0.55, 0.62), const Offset(0.35, 0.60),
+    const Offset(0.65, 0.60), const Offset(0.45, 0.32), const Offset(0.55, 0.32),
+    const Offset(0.22, 0.52), const Offset(0.78, 0.52), const Offset(0.20, 0.58),
+
+    // Contorno Inferior
+    const Offset(0.80, 0.58), const Offset(0.28, 0.60), const Offset(0.72, 0.60),
+    const Offset(0.32, 0.64), const Offset(0.68, 0.64), const Offset(0.40, 0.65),
+    const Offset(0.60, 0.65), const Offset(0.48, 0.66), const Offset(0.52, 0.66),
+
+    // Preenchimento Fino e Topo Seguro
+    const Offset(0.38, 0.35), const Offset(0.62, 0.35), const Offset(0.42, 0.30),
+    const Offset(0.58, 0.30), const Offset(0.48, 0.45), const Offset(0.52, 0.45),
+    const Offset(0.45, 0.50), const Offset(0.55, 0.50), const Offset(0.40, 0.50),
+    const Offset(0.60, 0.50), const Offset(0.38, 0.48), const Offset(0.62, 0.48),
+    const Offset(0.48, 0.52), const Offset(0.52, 0.52), const Offset(0.42, 0.55),
+    const Offset(0.58, 0.55), const Offset(0.45, 0.40), const Offset(0.55, 0.40),
+    const Offset(0.48, 0.40), const Offset(0.52, 0.40), const Offset(0.35, 0.50),
+    const Offset(0.65, 0.50), const Offset(0.32, 0.52), const Offset(0.68, 0.52),
+    const Offset(0.38, 0.58), const Offset(0.62, 0.58), const Offset(0.42, 0.62),
+    const Offset(0.58, 0.62), const Offset(0.48, 0.60), const Offset(0.52, 0.60),
+    const Offset(0.45, 0.65), const Offset(0.55, 0.65), const Offset(0.38, 0.42),
+    const Offset(0.62, 0.42), const Offset(0.42, 0.38), const Offset(0.58, 0.38),
+    const Offset(0.48, 0.35), const Offset(0.52, 0.35), const Offset(0.45, 0.30),
+    const Offset(0.55, 0.30),
   ];
 
   // =========================================================================
@@ -78,16 +103,23 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void _addLeaf() {
-    if (placedLeavesCount >= weeklyGoal) {
+  void _addMoita() {
+    if (placedMoitasCount >= weeklyGoal) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('A meta semanal já foi atingida!')),
+        const SnackBar(content: Text('A meta semanal já foi atingida! Parabéns!')),
+      );
+      return;
+    }
+
+    if (placedMoitasCount >= predefinedLeafPositions.length) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('A árvore já está totalmente cheia!')),
       );
       return;
     }
 
     setState(() {
-      placedLeavesCount++;
+      placedMoitasCount++;
     });
   }
 
@@ -128,10 +160,24 @@ class _HomePageState extends State<HomePage> {
             onPressed: () {
               if (pinController.text == '1234') {
                 Navigator.pop(context);
+
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const AreaMestrePage()),
-                );
+                  MaterialPageRoute(
+                    builder: (context) => AreaMestrePage(metaAtual: weeklyGoal),
+                  ),
+                ).then((resultado) {
+                  if (resultado != null) {
+                    setState(() {
+                      if (resultado['acao'] == 'zerar') {
+                        placedMoitasCount = 0; // Limpa o contador
+                      } else if (resultado['acao'] == 'salvar') {
+                        weeklyGoal = resultado['novaMeta'];
+                      }
+                    });
+                  }
+                });
+
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('PIN incorreto!'), backgroundColor: Colors.red),
@@ -145,37 +191,90 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // =========================================================================
+  // RENDERIZAÇÃO DA MOITA (5 FOLHAS)
+  // =========================================================================
+  Widget _buildMoitaWidget() {
+    return SizedBox(
+      width: 80,
+      height: 80,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: const [
+          Positioned(left: 20, top: 0, child: Icon(Icons.eco, color: Colors.greenAccent, size: 45, shadows: [Shadow(color: Colors.black45, blurRadius: 4, offset: Offset(1, 1))])),
+          Positioned(left: -5, top: 25, child: Icon(Icons.eco, color: Colors.lightGreenAccent, size: 40, shadows: [Shadow(color: Colors.black45, blurRadius: 4, offset: Offset(1, 1))])),
+          Positioned(left: 45, top: 25, child: Icon(Icons.eco, color: Colors.green, size: 40, shadows: [Shadow(color: Colors.black45, blurRadius: 4, offset: Offset(1, 1))])),
+          Positioned(left: 5, top: 50, child: Icon(Icons.eco, color: Colors.lightGreen, size: 40, shadows: [Shadow(color: Colors.black45, blurRadius: 4, offset: Offset(1, 1))])),
+          Positioned(left: 35, top: 50, child: Icon(Icons.eco, color: Colors.greenAccent, size: 40, shadows: [Shadow(color: Colors.black45, blurRadius: 4, offset: Offset(1, 1))])),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
+    final Size treeSize = Size(350, 450);
 
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 1. CAMADA DE FUNDO (Agora faz todo o trabalho: Céu, Árvore e Grama juntos)
+          // 1. CAMADA DE FUNDO
           Image.asset(
             getBackgroundImage(),
             fit: BoxFit.cover,
           ),
 
-          // 2. CAMADA DAS FOLHAS (Desenhadas diretamente por cima do fundo)
-          ...predefinedLeafPositions.take(placedLeavesCount).map((pos) {
-            return Positioned(
-              left: (pos.dx * screenSize.width) - 20,
-              top: (pos.dy * screenSize.height) - 20,
-              child: const Icon(
-                Icons.eco,
-                color: Colors.lightGreenAccent,
-                size: 40,
-                shadows: [
-                  Shadow(color: Colors.black45, blurRadius: 4, offset: Offset(2, 2))
-                ],
-              ),
-            );
-          }),
+          // 2. CAMADA DA ÁRVORE E DAS MOITAS
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 70.0),
+              child: SizedBox.fromSize(
+                size: treeSize,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    GestureDetector(
+                      onTapDown: (_) => _openParentMode(),
+                      child: Image.asset(
+                        'assets/images/arvore.png',
+                        width: treeSize.width,
+                        height: treeSize.height,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
 
-          // 3. CAMADA DE UI: BARRA SUPERIOR
+                    // Renderiza apenas a quantidade de moitas que o usuário ganhou
+                    ...predefinedLeafPositions.take(placedMoitasCount).map((pos) {
+                      return Positioned(
+                        // Subtrai 40 para centralizar a moita de 80x80 na coordenada
+                        left: (pos.dx * treeSize.width) - 40.0,
+                        top: (pos.dy * treeSize.height) - 40.0,
+                        child: _buildMoitaWidget(),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // 3. CAMADA DA GRAMA
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: IgnorePointer(
+              child: Image.asset(
+                'assets/images/grama.png',
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: screenSize.height * 0.18,
+              ),
+            ),
+          ),
+
+          // 4. CAMADA DE UI: BARRA SUPERIOR
           Positioned(
             top: 0,
             left: 0,
@@ -206,7 +305,7 @@ class _HomePageState extends State<HomePage> {
                           ]
                       ),
                       child: Text(
-                        'Folhas: $placedLeavesCount / $weeklyGoal',
+                        'Progresso: $placedMoitasCount / $weeklyGoal',
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.green),
                       ),
                     ),
@@ -223,13 +322,13 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
 
-      // BOTÃO FLUTUANTE DE ADICIONAR FOLHA
-      floatingActionButton: FloatingActionButton.large(
-        onPressed: _addLeaf,
+      // BOTÃO ÚNICO DE RECOMPENSA (Mais simples e direto)
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _addMoita,
         backgroundColor: Colors.green,
         elevation: 6,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: const Icon(Icons.add, color: Colors.white, size: 40),
+        icon: const Icon(Icons.park, color: Colors.white),
+        label: const Text('+1 Tarefa', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
