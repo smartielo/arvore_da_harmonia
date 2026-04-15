@@ -35,60 +35,51 @@ class _HomePageState extends State<HomePage> {
   // ÁREA DO BACKEND & LÓGICA DE DADOS
   // =========================================================================
 
-  // Agora a lógica é 1 para 1: Cada avanço desenha 1 Moita inteira
+  // A lógica é 1 para 1: Cada avanço desenha 1 Moita inteira
   int placedMoitasCount = 0;
-  int weeklyGoal = 60; // A meta agora significa "60 Moitas"
+  int weeklyGoal = 100; // Meta padrão ajustada para a capacidade da sua árvore
 
-  // 85 posições REVISADAS:
-  // - Removidas as posições Y < 0.30 (nada na lua)
-  // - Foco na expansão lateral (X indo de 0.20 até 0.80)
+  // A sua lista oficial de 101 posições - AGORA AJUSTADAS PARA CIMA!
   final List<Offset> predefinedLeafPositions = [
-    // Centro e Miolo
-    const Offset(0.50, 0.45), const Offset(0.45, 0.48), const Offset(0.55, 0.48),
-    const Offset(0.50, 0.52), const Offset(0.40, 0.45), const Offset(0.60, 0.45),
-    const Offset(0.42, 0.40), const Offset(0.58, 0.40), const Offset(0.38, 0.52),
-
-    // Expansão Lateral Interna
-    const Offset(0.62, 0.52), const Offset(0.45, 0.56), const Offset(0.55, 0.56),
-    const Offset(0.35, 0.48), const Offset(0.65, 0.48), const Offset(0.48, 0.38),
-    const Offset(0.52, 0.38), const Offset(0.35, 0.42), const Offset(0.65, 0.42),
-
-    // Base e Laterais Médias
-    const Offset(0.32, 0.55), const Offset(0.68, 0.55), const Offset(0.40, 0.60),
-    const Offset(0.60, 0.60), const Offset(0.50, 0.58), const Offset(0.50, 0.35),
-    const Offset(0.30, 0.45), const Offset(0.70, 0.45), const Offset(0.28, 0.50),
-
-    // Extremidades e Pontas dos Galhos
-    const Offset(0.72, 0.50), const Offset(0.25, 0.55), const Offset(0.75, 0.55),
-    const Offset(0.45, 0.62), const Offset(0.55, 0.62), const Offset(0.35, 0.60),
-    const Offset(0.65, 0.60), const Offset(0.45, 0.32), const Offset(0.55, 0.32),
-    const Offset(0.22, 0.52), const Offset(0.78, 0.52), const Offset(0.20, 0.58),
-
-    // Contorno Inferior
-    const Offset(0.80, 0.58), const Offset(0.28, 0.60), const Offset(0.72, 0.60),
-    const Offset(0.32, 0.64), const Offset(0.68, 0.64), const Offset(0.40, 0.65),
-    const Offset(0.60, 0.65), const Offset(0.48, 0.66), const Offset(0.52, 0.66),
-
-    // Preenchimento Fino e Topo Seguro
-    const Offset(0.38, 0.35), const Offset(0.62, 0.35), const Offset(0.42, 0.30),
-    const Offset(0.58, 0.30), const Offset(0.48, 0.45), const Offset(0.52, 0.45),
-    const Offset(0.45, 0.50), const Offset(0.55, 0.50), const Offset(0.40, 0.50),
-    const Offset(0.60, 0.50), const Offset(0.38, 0.48), const Offset(0.62, 0.48),
-    const Offset(0.48, 0.52), const Offset(0.52, 0.52), const Offset(0.42, 0.55),
-    const Offset(0.58, 0.55), const Offset(0.45, 0.40), const Offset(0.55, 0.40),
-    const Offset(0.48, 0.40), const Offset(0.52, 0.40), const Offset(0.35, 0.50),
-    const Offset(0.65, 0.50), const Offset(0.32, 0.52), const Offset(0.68, 0.52),
-    const Offset(0.38, 0.58), const Offset(0.62, 0.58), const Offset(0.42, 0.62),
-    const Offset(0.58, 0.62), const Offset(0.48, 0.60), const Offset(0.52, 0.60),
-    const Offset(0.45, 0.65), const Offset(0.55, 0.65), const Offset(0.38, 0.42),
-    const Offset(0.62, 0.42), const Offset(0.42, 0.38), const Offset(0.58, 0.38),
-    const Offset(0.48, 0.35), const Offset(0.52, 0.35), const Offset(0.45, 0.30),
-    const Offset(0.55, 0.30),
+    const Offset(0.496, 0.461), const Offset(0.372, 0.449), const Offset(0.285, 0.424),
+    const Offset(0.194, 0.400), const Offset(0.078, 0.362), const Offset(0.045, 0.424),
+    const Offset(0.094, 0.327), const Offset(0.012, 0.289), const Offset(0.070, 0.251),
+    const Offset(0.169, 0.244), const Offset(0.243, 0.240), const Offset(0.297, 0.249),
+    const Offset(0.380, 0.301), const Offset(0.454, 0.339), const Offset(0.454, 0.386),
+    const Offset(0.471, 0.407), const Offset(0.421, 0.322), const Offset(0.384, 0.292),
+    const Offset(0.342, 0.358), const Offset(0.252, 0.355), const Offset(0.503, 0.372),
+    const Offset(0.574, 0.301), const Offset(0.602, 0.268), const Offset(0.690, 0.266),
+    const Offset(0.735, 0.214), const Offset(0.781, 0.183), const Offset(0.847, 0.181),
+    const Offset(0.648, 0.195), const Offset(0.644, 0.162), const Offset(0.619, 0.131),
+    const Offset(0.607, 0.093), const Offset(0.483, 0.249), const Offset(0.475, 0.190),
+    const Offset(0.384, 0.207), const Offset(0.388, 0.148), const Offset(0.392, 0.105),
+    const Offset(0.487, 0.060), const Offset(0.338, 0.188), const Offset(0.272, 0.150),
+    const Offset(0.252, 0.115), const Offset(0.252, 0.115), const Offset(0.169, 0.202),
+    const Offset(0.107, 0.164), const Offset(0.177, 0.119), const Offset(0.578, 0.424),
+    const Offset(0.657, 0.365), const Offset(0.694, 0.417), const Offset(0.805, 0.405),
+    const Offset(0.901, 0.389), const Offset(0.793, 0.346), const Offset(0.822, 0.278),
+    const Offset(0.847, 0.315), const Offset(0.847, 0.278), const Offset(0.888, 0.254),
+    const Offset(0.962, 0.322), const Offset(0.946, 0.350), const Offset(0.615, 0.421),
+    const Offset(0.702, 0.469), const Offset(0.512, 0.429), const Offset(0.313, 0.429),
+    const Offset(0.334, 0.320), const Offset(0.380, 0.238), const Offset(0.467, 0.242),
+    const Offset(0.313, 0.365), const Offset(0.235, 0.457), const Offset(0.169, 0.188),
+    const Offset(0.127, 0.171), const Offset(0.222, 0.176), const Offset(0.437, 0.190),
+    const Offset(0.553, 0.150), const Offset(0.528, 0.136), const Offset(0.661, 0.124),
+    const Offset(0.756, 0.162), const Offset(0.760, 0.221), const Offset(0.826, 0.256),
+    const Offset(0.789, 0.292), const Offset(0.813, 0.334), const Offset(0.912, 0.386),
+    const Offset(0.809, 0.426), const Offset(0.698, 0.424), const Offset(0.632, 0.438),
+    const Offset(0.553, 0.447), const Offset(0.417, 0.443), const Offset(0.272, 0.433),
+    const Offset(0.222, 0.429), const Offset(0.136, 0.350), const Offset(0.062, 0.289),
+    const Offset(0.037, 0.308), const Offset(0.152, 0.176), const Offset(0.098, 0.103),
+    const Offset(0.268, 0.068), const Offset(0.334, 0.063), const Offset(0.412, 0.068),
+    const Offset(0.591, 0.096), const Offset(0.677, 0.152), const Offset(0.764, 0.176),
+    const Offset(0.867, 0.223), const Offset(0.917, 0.240), const Offset(0.917, 0.318),
+    const Offset(0.888, 0.386), const Offset(0.872, 0.421), const Offset(0.802, 0.421),
   ];
 
-  // ========================================================================
+  // =========================================================================
   // MÉTODOS DE AÇÃO
-  // ========================================================================
+  // =========================================================================
 
   String getBackgroundImage() {
     final hour = DateTime.now().hour;
@@ -214,7 +205,9 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
-    final Size treeSize = Size(350, 450);
+
+    // Mantemos o tamanho da caixa gigante que usamos para mapear!
+    final Size treeSize = const Size(400, 700);
 
     return Scaffold(
       body: Stack(
@@ -230,7 +223,8 @@ class _HomePageState extends State<HomePage> {
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 70.0),
+              // Sem padding para a caixa usar a tela toda, assim como no mapeador
+              padding: const EdgeInsets.only(bottom: 0.0),
               child: SizedBox.fromSize(
                 size: treeSize,
                 child: Stack(
@@ -238,21 +232,20 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     GestureDetector(
                       onTapDown: (_) => _openParentMode(),
-                      child: Image.asset(
-                        'assets/images/arvore.png',
+                      child: Container(
+                        color: Colors.transparent,
                         width: treeSize.width,
                         height: treeSize.height,
-                        fit: BoxFit.contain,
                       ),
                     ),
 
-                    // Renderiza apenas a quantidade de moitas que o usuário ganhou
+                    // Renderiza as moitas perfeitamente nas suas coordenadas customizadas
                     ...predefinedLeafPositions.take(placedMoitasCount).map((pos) {
                       return Positioned(
                         // Subtrai 40 para centralizar a moita de 80x80 na coordenada
                         left: (pos.dx * treeSize.width) - 40.0,
                         top: (pos.dy * treeSize.height) - 40.0,
-                        child: _buildMoitaWidget(),
+                        child: IgnorePointer(child: _buildMoitaWidget()),
                       );
                     }),
                   ],
@@ -261,7 +254,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
 
-          // 3. CAMADA DA GRAMA
+          // 3. CAMADA DA GRAMA (Rodapé Responsivo)
           Align(
             alignment: Alignment.bottomCenter,
             child: IgnorePointer(
@@ -322,7 +315,7 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
 
-      // BOTÃO ÚNICO DE RECOMPENSA (Mais simples e direto)
+      // BOTÃO ÚNICO DE RECOMPENSA
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _addMoita,
         backgroundColor: Colors.green,
