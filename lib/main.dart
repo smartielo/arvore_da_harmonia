@@ -9,10 +9,12 @@ import 'area_mestre_page.dart';
 import 'creditos_page.dart';
 import 'data/app_repository.dart';
 import 'models/week_models.dart';
+import 'services/app_sounds.dart';
 import 'services/celebration_vibration.dart';
-import 'services/device_auth_gate.dart';
+import 'services/parent_access.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const ArvoreDaHarmoniaApp());
 }
 
@@ -41,7 +43,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
-  static const String _parentPin = '1234';
   static const double _moitaDyNudge = 0.045;
 
   int placedMoitasCount = 0;
@@ -49,6 +50,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   bool _periodoCelebrado = false;
   bool _aguardandoShakePosEncerramento = false;
   bool _vibrationEnabled = true;
+  int _vibrationIntensity = 2;
   DateTime? _prazoPeriodo;
 
   StreamSubscription<UserAccelerometerEvent>? _accelSub;
@@ -93,6 +95,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     )..addStatusListener(_onFallStatus);
     _fallController.addListener(_onFallTick);
     _bootstrap();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(AppSounds.startAmbientIfEnabled());
+    });
   }
 
   Future<void> _bootstrap() async {
@@ -104,6 +109,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       placedMoitasCount = s.placedMoitasCount;
       _periodoCelebrado = s.periodoCelebrado;
       _vibrationEnabled = s.vibrationEnabled;
+      _vibrationIntensity = s.vibrationIntensity;
       _prazoPeriodo = s.periodoFim;
     });
   }
@@ -114,7 +120,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final step = (v * 16).floor();
     if (step != _lastHapticStep) {
       _lastHapticStep = step;
-      unawaited(CelebrationVibration.pulse());
+      unawaited(CelebrationVibration.pulse(intensity: _vibrationIntensity));
     }
   }
 
@@ -136,6 +142,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    unawaited(AppSounds.dispose());
     _pararEscutaShake();
     _fallController.removeListener(_onFallTick);
     _fallController.removeStatusListener(_onFallStatus);
@@ -186,6 +193,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
 
     final snap = await AppRepository.instance.load();
+    final pontosAntes = placedMoitasCount;
 
     if (snap.tarefasBatemMeta) {
       final pendentes = snap.tarefas.where((t) => !snap.tarefasConcluidasIds.contains(t.id)).toList();
@@ -247,6 +255,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       await AppRepository.instance.saveTarefasConcluidas(concluidas);
       await AppRepository.instance.savePlacedMoitas(placedMoitasCount);
       await _garantirInicioPeriodo();
+      unawaited(AppSounds.playTarefaConcluida());
+      if (placedMoitasCount >= weeklyGoal && pontosAntes < weeklyGoal) {
+        unawaited(AppSounds.playMetaAtingida());
+      }
       return;
     }
 
@@ -255,6 +267,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     });
     await AppRepository.instance.savePlacedMoitas(placedMoitasCount);
     await _garantirInicioPeriodo();
+    unawaited(AppSounds.playTarefaConcluida());
+    if (placedMoitasCount >= weeklyGoal && pontosAntes < weeklyGoal) {
+      unawaited(AppSounds.playMetaAtingida());
+    }
   }
 
   void _pararEscutaShake() {
@@ -322,81 +338,43 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Future<void> _abrirFinalizarPeriodo() async {
-    final desbloqueou = await DeviceAuthGate.unlock();
-    if (!mounted) return;
-    if (!desbloqueou) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Autenticação do celular cancelada ou falhou.')),
-      );
+    final ok = await ParentAccess.run(
+      context,
+      title: 'Finalizar período',
+      subtitle: 'Confirme para encerrar o período e celebrar:',
+    );
+    if (!mounted || !ok) {
+      if (mounted && !ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Não foi possível confirmar. Tente de novo ou ajuste o modo de acesso nas configurações.')),
+        );
+      }
       return;
     }
-
-    final pinController = TextEditingController();
-
-    await showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Finalizar período', textAlign: TextAlign.center),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Digite o PIN do app para encerrar o período e celebrar:'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: pinController,
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 4,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 24, letterSpacing: 16),
-              decoration: InputDecoration(
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                counterText: '',
-              ),
-            ),
-          ],
-        ),
-        actionsAlignment: MainAxisAlignment.spaceEvenly,
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-            onPressed: () {
-              if (pinController.text != _parentPin) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('PIN incorreto!'), backgroundColor: Colors.red),
-                );
-                return;
-              }
-              Navigator.pop(context);
-              setState(() {
-                _aguardandoShakePosEncerramento = true;
-              });
-              _iniciarEscutaShake();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Período liberado! Balance o celular para ver as folhas caírem.'),
-                  duration: Duration(seconds: 5),
-                ),
-              );
-            },
-            child: const Text('Confirmar'),
-          ),
-        ],
+    setState(() {
+      _aguardandoShakePosEncerramento = true;
+    });
+    _iniciarEscutaShake();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Período liberado! Balance o celular para ver as folhas caírem.'),
+        duration: Duration(seconds: 5),
       ),
     );
   }
 
   Future<void> _abrirIniciarNovoPeriodo() async {
-    final desbloqueou = await DeviceAuthGate.unlock();
-    if (!mounted) return;
-    if (!desbloqueou) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Autenticação do celular cancelada ou falhou.')),
-      );
+    final okAuth = await ParentAccess.run(
+      context,
+      title: 'Novo período',
+      subtitle: 'Confirme para encerrar o ciclo e definir o próximo prazo:',
+    );
+    if (!mounted || !okAuth) {
+      if (mounted && !okAuth) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Não foi possível confirmar. Verifique biometria/PIN nas configurações.')),
+        );
+      }
       return;
     }
 
@@ -414,50 +392,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       helpText: 'Prazo final do próximo período',
     );
     if (escolhida == null || !mounted) return;
-
-    final pinController = TextEditingController();
-    final pinOk = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirmar novo período', textAlign: TextAlign.center),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Novo prazo: ${_fmtDia(escolhida)}. Digite o PIN do app para zerar a árvore e começar de novo:'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: pinController,
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 4,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 24, letterSpacing: 16),
-              decoration: InputDecoration(
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                counterText: '',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-          ElevatedButton(
-            onPressed: () {
-              if (pinController.text == _parentPin) {
-                Navigator.pop(context, true);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('PIN incorreto!'), backgroundColor: Colors.red),
-                );
-              }
-            },
-            child: const Text('Confirmar'),
-          ),
-        ],
-      ),
-    );
-
-    if (pinOk != true || !mounted) return;
 
     final snap = await AppRepository.instance.load();
     final agora = DateTime.now();
@@ -478,9 +412,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     if (!mounted) return;
     final s = await AppRepository.instance.load();
     if (!mounted) return;
-    _aplicarSnapshot(s);
+    setState(() {
+      weeklyGoal = s.weeklyGoal;
+      placedMoitasCount = s.placedMoitasCount;
+      _periodoCelebrado = s.periodoCelebrado;
+      _vibrationEnabled = s.vibrationEnabled;
+      _vibrationIntensity = s.vibrationIntensity;
+      _prazoPeriodo = s.periodoFim;
+    });
     _pararEscutaShake();
     _fallController.reset();
+    unawaited(AppSounds.refreshAmbientFromSettings());
     final msg = 'Novo período iniciado! Prazo até ${_fmtDia(escolhida)}.';
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!context.mounted) return;
@@ -494,81 +436,40 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       placedMoitasCount = s.placedMoitasCount;
       _periodoCelebrado = s.periodoCelebrado;
       _vibrationEnabled = s.vibrationEnabled;
+      _vibrationIntensity = s.vibrationIntensity;
       _prazoPeriodo = s.periodoFim;
     });
+    unawaited(AppSounds.refreshAmbientFromSettings());
   }
 
   Future<void> _openParentMode() async {
-    final desbloqueou = await DeviceAuthGate.unlock();
-    if (!mounted) return;
-    if (!desbloqueou) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Autenticação do celular cancelada ou falhou.')),
-      );
+    final ok = await ParentAccess.run(
+      context,
+      title: 'Área do responsável',
+      subtitle: 'Confirme para continuar:',
+    );
+    if (!mounted || !ok) {
+      if (mounted && !ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Acesso não confirmado.')),
+        );
+      }
       return;
     }
 
-    final pinController = TextEditingController();
-
-    await showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Acesso Restrito', textAlign: TextAlign.center),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Agora digite o PIN do app (4 dígitos):'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: pinController,
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 4,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 24, letterSpacing: 16),
-              decoration: InputDecoration(
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                counterText: '',
-              ),
-            ),
-          ],
-        ),
-        actionsAlignment: MainAxisAlignment.spaceEvenly,
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-            onPressed: () async {
-              if (pinController.text != _parentPin) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('PIN incorreto!'), backgroundColor: Colors.red),
-                );
-                return;
-              }
-              Navigator.pop(context);
-
-              await Navigator.push<void>(
-                context,
-                MaterialPageRoute(builder: (context) => const AreaMestrePage()),
-              );
-
-              if (!mounted) return;
-              final s = await AppRepository.instance.load();
-              _aplicarSnapshot(s);
-
-              if (s.placedMoitasCount == 0) {
-                _pararEscutaShake();
-                _fallController.reset();
-              }
-            },
-            child: const Text('Entrar'),
-          ),
-        ],
-      ),
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(builder: (context) => const AreaMestrePage()),
     );
+
+    if (!mounted) return;
+    final s = await AppRepository.instance.load();
+    _aplicarSnapshot(s);
+
+    if (s.placedMoitasCount == 0) {
+      _pararEscutaShake();
+      _fallController.reset();
+    }
   }
 
   Widget _buildMoitaWidget() {
@@ -635,6 +536,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           Align(
             alignment: Alignment.bottomCenter,
             child: SizedBox.fromSize(
+              key: ValueKey<int>(placedMoitasCount),
               size: treeSize,
               child: Stack(
                 clipBehavior: Clip.none,

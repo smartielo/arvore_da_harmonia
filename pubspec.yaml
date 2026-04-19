@@ -38,6 +38,7 @@ dependencies:
   shared_preferences: ^2.5.5
   vibration: ^3.1.8
   local_auth: ^3.0.1
+  audioplayers: ^6.6.0
 
 dev_dependencies:
   flutter_test:
@@ -71,6 +72,9 @@ flutter:
     - assets/images/noite.png
     - assets/images/logo_cc.jpg
     - assets/images/logo_extensao.jpg
+    - assets/sounds/tarefa.wav
+    - assets/sounds/ciclo.wav
+    - assets/sounds/fundo.wav
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

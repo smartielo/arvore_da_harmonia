@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'data/app_repository.dart';
+import 'models/parent_auth_mode.dart';
 import 'models/week_models.dart';
 import 'tarefas_semana_page.dart';
 
@@ -17,6 +18,11 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
 
   bool _loading = true;
   bool _vibrationEnabled = true;
+  double _vibrationIntensity = 2;
+  ParentAuthMode _authMode = ParentAuthMode.appPinOnly;
+  bool _soundTask = true;
+  bool _soundCycle = true;
+  bool _soundAmbient = false;
   AppSnapshot? _snap;
   DateTime? _dataLimitePeriodo;
 
@@ -34,6 +40,11 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
       _metaController.text = snap.weeklyGoal.toString();
       _premioController.text = snap.weeklyPrize;
       _vibrationEnabled = snap.vibrationEnabled;
+      _vibrationIntensity = snap.vibrationIntensity.toDouble();
+      _authMode = parentAuthModeFromStorage(snap.authModeStorage);
+      _soundTask = snap.soundTaskEnabled;
+      _soundCycle = snap.soundCycleEnabled;
+      _soundAmbient = snap.soundAmbientEnabled;
       _dataLimitePeriodo = snap.periodoFim;
       _loading = false;
     });
@@ -74,6 +85,11 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
     await AppRepository.instance.saveWeeklyGoal(novaMeta);
     await AppRepository.instance.saveWeeklyPrize(premio);
     await AppRepository.instance.saveVibrationEnabled(_vibrationEnabled);
+    await AppRepository.instance.saveVibrationIntensity(_vibrationIntensity.round().clamp(1, 3));
+    await AppRepository.instance.saveAuthModeStorage(parentAuthModeToStorage(_authMode));
+    await AppRepository.instance.saveSoundTaskEnabled(_soundTask);
+    await AppRepository.instance.saveSoundCycleEnabled(_soundCycle);
+    await AppRepository.instance.saveSoundAmbientEnabled(_soundAmbient);
     await AppRepository.instance.savePeriodoFim(_dataLimitePeriodo);
 
     if (!mounted) return;
@@ -218,10 +234,83 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
             const SizedBox(height: 8),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Vibração leve ao celebrar (folhas caindo)'),
+              title: const Text('Vibração ao celebrar (folhas caindo)'),
               subtitle: const Text('Desative se preferir sem feedback tátil.'),
               value: _vibrationEnabled,
               onChanged: (v) => setState(() => _vibrationEnabled = v),
+            ),
+            if (_vibrationEnabled) ...[
+              const SizedBox(height: 8),
+              Text('Intensidade da vibração', style: TextStyle(fontSize: 13, color: Colors.grey[800])),
+              Row(
+                children: [
+                  const Text('Leve'),
+                  Expanded(
+                    child: Slider(
+                      value: _vibrationIntensity,
+                      min: 1,
+                      max: 3,
+                      divisions: 2,
+                      label: _vibrationIntensity.round().toString(),
+                      onChanged: (v) => setState(() => _vibrationIntensity = v),
+                    ),
+                  ),
+                  const Text('Forte'),
+                ],
+              ),
+            ],
+            const SizedBox(height: 8),
+            const Text('Como entrar na área do responsável', style: TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            InputDecorator(
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<ParentAuthMode>(
+                  isExpanded: true,
+                  value: _authMode,
+                  items: const [
+                    DropdownMenuItem(
+                      value: ParentAuthMode.appPinOnly,
+                      child: Text('Só PIN do app (4 dígitos)'),
+                    ),
+                    DropdownMenuItem(
+                      value: ParentAuthMode.biometricOnly,
+                      child: Text('Só biometria / rosto do celular'),
+                    ),
+                    DropdownMenuItem(
+                      value: ParentAuthMode.biometricAndAppPin,
+                      child: Text('Biometria do celular e depois PIN do app'),
+                    ),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) setState(() => _authMode = v);
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text('Sons', style: TextStyle(fontWeight: FontWeight.w600)),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Som ao registrar tarefa / ponto'),
+              value: _soundTask,
+              onChanged: (v) => setState(() => _soundTask = v),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Som ao atingir a meta do período'),
+              value: _soundCycle,
+              onChanged: (v) => setState(() => _soundCycle = v),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Som ambiente bem leve (loop)'),
+              subtitle: const Text('Pode aumentar o uso de bateria.'),
+              value: _soundAmbient,
+              onChanged: (v) => setState(() => _soundAmbient = v),
             ),
             const SizedBox(height: 16),
             SizedBox(

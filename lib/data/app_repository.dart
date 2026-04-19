@@ -10,6 +10,12 @@ class AppSnapshot {
   int placedMoitasCount;
   bool periodoCelebrado;
   bool vibrationEnabled;
+  /// 1 = leve, 2 = médio, 3 = forte
+  int vibrationIntensity;
+  String authModeStorage;
+  bool soundTaskEnabled;
+  bool soundCycleEnabled;
+  bool soundAmbientEnabled;
   List<TarefaSemana> tarefas;
   Set<String> tarefasConcluidasIds;
   List<HistoricoPeriodo> historico;
@@ -22,6 +28,11 @@ class AppSnapshot {
     required this.placedMoitasCount,
     required this.periodoCelebrado,
     required this.vibrationEnabled,
+    required this.vibrationIntensity,
+    required this.authModeStorage,
+    required this.soundTaskEnabled,
+    required this.soundCycleEnabled,
+    required this.soundAmbientEnabled,
     required this.tarefas,
     required this.tarefasConcluidasIds,
     required this.historico,
@@ -43,6 +54,11 @@ class AppRepository {
   static const _kMoitas = 'placed_moitas';
   static const _kPeriodoCelebrado = 'periodo_celebrado';
   static const _kVibration = 'vibration_enabled';
+  static const _kVibrationIntensity = 'vibration_intensity';
+  static const _kAuthMode = 'parent_auth_mode';
+  static const _kSoundTask = 'sound_task';
+  static const _kSoundCycle = 'sound_cycle';
+  static const _kSoundAmbient = 'sound_ambient';
   static const _kTarefas = 'tarefas_json';
   static const _kConcluidas = 'tarefas_concluidas_json';
   static const _kHistorico = 'historico_json';
@@ -56,6 +72,11 @@ class AppRepository {
     final moitas = p.getInt(_kMoitas) ?? 0;
     final celebrado = p.getBool(_kPeriodoCelebrado) ?? false;
     final vib = p.getBool(_kVibration) ?? true;
+    final vibInt = (p.getInt(_kVibrationIntensity) ?? 2).clamp(1, 3);
+    final auth = p.getString(_kAuthMode) ?? 'app_pin_only';
+    final st = p.getBool(_kSoundTask) ?? true;
+    final sc = p.getBool(_kSoundCycle) ?? true;
+    final sa = p.getBool(_kSoundAmbient) ?? false;
     final inicioStr = p.getString(_kPeriodoInicio);
     final DateTime? inicio = inicioStr != null ? DateTime.tryParse(inicioStr) : null;
     final fimStr = p.getString(_kPeriodoFim);
@@ -88,6 +109,11 @@ class AppRepository {
       placedMoitasCount: moitas,
       periodoCelebrado: celebrado,
       vibrationEnabled: vib,
+      vibrationIntensity: vibInt,
+      authModeStorage: auth,
+      soundTaskEnabled: st,
+      soundCycleEnabled: sc,
+      soundAmbientEnabled: sa,
       tarefas: tarefas,
       tarefasConcluidasIds: concluidas,
       historico: hist,
@@ -119,6 +145,26 @@ class AppRepository {
 
   Future<void> saveVibrationEnabled(bool v) async {
     await _write((p) => p.setBool(_kVibration, v));
+  }
+
+  Future<void> saveVibrationIntensity(int v) async {
+    await _write((p) => p.setInt(_kVibrationIntensity, v.clamp(1, 3)));
+  }
+
+  Future<void> saveAuthModeStorage(String v) async {
+    await _write((p) => p.setString(_kAuthMode, v));
+  }
+
+  Future<void> saveSoundTaskEnabled(bool v) async {
+    await _write((p) => p.setBool(_kSoundTask, v));
+  }
+
+  Future<void> saveSoundCycleEnabled(bool v) async {
+    await _write((p) => p.setBool(_kSoundCycle, v));
+  }
+
+  Future<void> saveSoundAmbientEnabled(bool v) async {
+    await _write((p) => p.setBool(_kSoundAmbient, v));
   }
 
   Future<void> saveTarefas(List<TarefaSemana> list) async {
