@@ -270,7 +270,7 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Configurações do período',
+              'Configurações do periodo',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.blueGrey),
             ),
             const SizedBox(height: 20),
