@@ -9,7 +9,7 @@ import 'device_auth_gate.dart';
 class ParentAccess {
   ParentAccess._();
 
-  static const String defaultAppPin = '1234';
+  static const String legacyDefaultAppPin = '1234';
 
   static Future<bool> run(
     BuildContext context, {
@@ -17,6 +17,7 @@ class ParentAccess {
     String subtitle = 'Digite o PIN de 4 dígitos:',
   }) async {
     final snap = await AppRepository.instance.load();
+    final expectedPin = await AppRepository.instance.loadAppPin(fallback: legacyDefaultAppPin);
     final mode = parentAuthModeFromStorage(snap.authModeStorage);
 
     switch (mode) {
@@ -24,7 +25,7 @@ class ParentAccess {
         if (!context.mounted) return false;
         return showAppPinDialog(
           context,
-          expectedPin: defaultAppPin,
+          expectedPin: expectedPin,
           title: title,
           subtitle: subtitle,
         );
@@ -36,7 +37,7 @@ class ParentAccess {
         if (!context.mounted) return false;
         return showAppPinDialog(
           context,
-          expectedPin: defaultAppPin,
+          expectedPin: expectedPin,
           title: title,
           subtitle: 'Agora o PIN do app (4 dígitos):',
         );

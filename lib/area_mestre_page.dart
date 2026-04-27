@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'data/app_repository.dart';
 import 'models/parent_auth_mode.dart';
 import 'models/week_models.dart';
+import 'services/app_sounds.dart';
+import 'services/device_auth_gate.dart';
 import 'tarefas_semana_page.dart';
 
 class AreaMestrePage extends StatefulWidget {
@@ -15,6 +17,9 @@ class AreaMestrePage extends StatefulWidget {
 class _AreaMestrePageState extends State<AreaMestrePage> {
   final TextEditingController _metaController = TextEditingController();
   final TextEditingController _premioController = TextEditingController();
+  final TextEditingController _pinAtualController = TextEditingController();
+  final TextEditingController _novoPinController = TextEditingController();
+  final TextEditingController _confirmarPinController = TextEditingController();
 
   bool _loading = true;
   bool _vibrationEnabled = true;
@@ -25,6 +30,8 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
   bool _soundAmbient = false;
   AppSnapshot? _snap;
   DateTime? _dataLimitePeriodo;
+
+  static final RegExp _pinRegex = RegExp(r'^\d{4}$');
 
   @override
   void initState() {
@@ -75,11 +82,74 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
   void dispose() {
     _metaController.dispose();
     _premioController.dispose();
+    _pinAtualController.dispose();
+    _novoPinController.dispose();
+    _confirmarPinController.dispose();
     super.dispose();
   }
 
+  bool _pinValido(String pin) => _pinRegex.hasMatch(pin);
+
+  Future<void> _alterarPin({required bool viaRecuperacao}) async {
+    final novoPin = _novoPinController.text.trim();
+    final confirmarPin = _confirmarPinController.text.trim();
+
+    if (!_pinValido(novoPin)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Novo PIN inválido. Use exatamente 4 dígitos numéricos.'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    if (confirmarPin != novoPin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('A confirmação do novo PIN não confere.'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    if (viaRecuperacao) {
+      final okDevice = await DeviceAuthGate.unlockDeviceCredentials();
+      if (!mounted || !okDevice) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Não foi possível validar no dispositivo. PIN não alterado.'), backgroundColor: Colors.red),
+          );
+        }
+        return;
+      }
+    } else {
+      final esperado = await AppRepository.instance.loadAppPin();
+      if (!mounted) return;
+      final pinAtual = _pinAtualController.text.trim();
+      if (pinAtual != esperado) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('PIN atual incorreto.'), backgroundColor: Colors.red),
+        );
+        return;
+      }
+    }
+
+    await AppRepository.instance.saveAppPin(novoPin);
+    if (!mounted) return;
+
+    _pinAtualController.clear();
+    _novoPinController.clear();
+    _confirmarPinController.clear();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('PIN alterado com sucesso!'), backgroundColor: Colors.green),
+    );
+  }
+
   Future<void> _salvarConfiguracoes() async {
-    final novaMeta = int.tryParse(_metaController.text) ?? _snap?.weeklyGoal ?? 100;
+    final metaParse = int.tryParse(_metaController.text);
+    if (metaParse == null || metaParse < 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('A meta precisa ser um número maior que zero.'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    final novaMeta = metaParse;
     final premio = _premioController.text.trim();
 
     await AppRepository.instance.saveWeeklyGoal(novaMeta);
@@ -91,6 +161,7 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
     await AppRepository.instance.saveSoundCycleEnabled(_soundCycle);
     await AppRepository.instance.saveSoundAmbientEnabled(_soundAmbient);
     await AppRepository.instance.savePeriodoFim(_dataLimitePeriodo);
+    await AppSounds.refreshAmbientFromSettings();
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -297,20 +368,128 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
               contentPadding: EdgeInsets.zero,
               title: const Text('Som ao registrar tarefa / ponto'),
               value: _soundTask,
-              onChanged: (v) => setState(() => _soundTask = v),
+              onChanged: (v) async {
+                setState(() => _soundTask = v);
+                await AppRepository.instance.saveSoundTaskEnabled(v);
+              },
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Som ao atingir a meta do período'),
               value: _soundCycle,
-              onChanged: (v) => setState(() => _soundCycle = v),
+              onChanged: (v) async {
+                setState(() => _soundCycle = v);
+                await AppRepository.instance.saveSoundCycleEnabled(v);
+              },
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Som ambiente bem leve (loop)'),
               subtitle: const Text('Pode aumentar o uso de bateria.'),
               value: _soundAmbient,
-              onChanged: (v) => setState(() => _soundAmbient = v),
+              onChanged: (v) async {
+                setState(() => _soundAmbient = v);
+                await AppRepository.instance.saveSoundAmbientEnabled(v);
+                await AppSounds.refreshAmbientFromSettings();
+              },
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _soundTask
+                      ? () async {
+                          await AppSounds.testTaskSfx();
+                        }
+                      : null,
+                  icon: const Icon(Icons.music_note),
+                  label: const Text('Testar tarefa'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _soundCycle
+                      ? () async {
+                          await AppSounds.testCycleSfx();
+                        }
+                      : null,
+                  icon: const Icon(Icons.emoji_events),
+                  label: const Text('Testar meta'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    await AppSounds.testAmbientLoop();
+                  },
+                  icon: Icon(_soundAmbient ? Icons.stop_circle_outlined : Icons.play_circle_outline),
+                  label: Text(_soundAmbient ? 'Alternar ambiente' : 'Testar ambiente'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            const Divider(),
+            const SizedBox(height: 16),
+            const Text('Segurança do app', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _pinAtualController,
+              keyboardType: TextInputType.number,
+              obscureText: true,
+              maxLength: 4,
+              decoration: InputDecoration(
+                labelText: 'PIN atual',
+                counterText: '',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _novoPinController,
+              keyboardType: TextInputType.number,
+              obscureText: true,
+              maxLength: 4,
+              decoration: InputDecoration(
+                labelText: 'Novo PIN (4 dígitos)',
+                counterText: '',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _confirmarPinController,
+              keyboardType: TextInputType.number,
+              obscureText: true,
+              maxLength: 4,
+              decoration: InputDecoration(
+                labelText: 'Confirmar novo PIN',
+                counterText: '',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.indigo,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () => _alterarPin(viaRecuperacao: false),
+                    icon: const Icon(Icons.lock_reset),
+                    label: const Text('Alterar PIN'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => _alterarPin(viaRecuperacao: true),
+                icon: const Icon(Icons.fingerprint),
+                label: const Text('Esqueci o PIN (usar biometria/senha do celular)'),
+              ),
             ),
             const SizedBox(height: 16),
             SizedBox(

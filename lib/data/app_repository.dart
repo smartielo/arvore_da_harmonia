@@ -64,6 +64,7 @@ class AppRepository {
   static const _kHistorico = 'historico_json';
   static const _kPeriodoInicio = 'periodo_inicio_iso';
   static const _kPeriodoFim = 'periodo_fim_iso';
+  static const _kAppPin = 'app_pin';
 
   Future<AppSnapshot> load() async {
     final p = await SharedPreferences.getInstance();
@@ -204,6 +205,17 @@ class AppRepository {
     final snap = await load();
     final list = [...snap.historico, h];
     await saveHistorico(list);
+  }
+
+  Future<String> loadAppPin({String fallback = '1234'}) async {
+    final p = await SharedPreferences.getInstance();
+    final stored = p.getString(_kAppPin);
+    if (stored == null || stored.length != 4) return fallback;
+    return stored;
+  }
+
+  Future<void> saveAppPin(String pin) async {
+    await _write((p) => p.setString(_kAppPin, pin));
   }
 
   /// Novo período: zera folhas, conclusões e celebração; opcionalmente grava histórico do período anterior.
