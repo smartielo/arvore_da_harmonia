@@ -31,6 +31,21 @@ class AppSounds {
     }
   }
 
+  static double _sfxGainForIntensity(int intensity) {
+    switch (intensity.clamp(1, 3)) {
+      case 1:
+        return 0.78;
+      case 3:
+        return 1.18;
+      default:
+        return 1.0;
+    }
+  }
+
+  static double _withIntensity(double baseVolume, int intensity) {
+    return (baseVolume * _sfxGainForIntensity(intensity)).clamp(0.0, 1.0);
+  }
+
   static Future<void> _configurePlayer(
     AudioPlayer player, {
     required ReleaseMode releaseMode,
@@ -115,21 +130,39 @@ class AppSounds {
   static Future<void> playTarefaConcluida() async {
     final s = await AppRepository.instance.load();
     if (!s.soundTaskEnabled) return;
-    await _playSfx(_AudioChannel.task, 'sounds/tarefa.wav', volume: 0.85);
+    await _playSfx(
+      _AudioChannel.task,
+      'sounds/tarefa.wav',
+      volume: _withIntensity(0.44, s.soundIntensity),
+    );
   }
 
   static Future<void> playMetaAtingida() async {
     final s = await AppRepository.instance.load();
     if (!s.soundCycleEnabled) return;
-    await _playSfx(_AudioChannel.cycle, 'sounds/ciclo.wav', volume: 0.9);
+    await _playSfx(
+      _AudioChannel.cycle,
+      'sounds/ciclo.wav',
+      volume: _withIntensity(0.52, s.soundIntensity),
+    );
   }
 
   static Future<void> testTaskSfx() async {
-    await _playSfx(_AudioChannel.task, 'sounds/tarefa.wav', volume: 0.85);
+    final s = await AppRepository.instance.load();
+    await _playSfx(
+      _AudioChannel.task,
+      'sounds/tarefa.wav',
+      volume: _withIntensity(0.44, s.soundIntensity),
+    );
   }
 
   static Future<void> testCycleSfx() async {
-    await _playSfx(_AudioChannel.cycle, 'sounds/ciclo.wav', volume: 0.9);
+    final s = await AppRepository.instance.load();
+    await _playSfx(
+      _AudioChannel.cycle,
+      'sounds/ciclo.wav',
+      volume: _withIntensity(0.52, s.soundIntensity),
+    );
   }
 
   /// Inicia fundo bem baixo em loop (se habilitado).
@@ -148,7 +181,7 @@ class AppSounds {
     await _ensurePlayersConfigured();
     try {
       await _ambient.setReleaseMode(ReleaseMode.loop);
-      await _ambient.setVolume(0.08);
+      await _ambient.setVolume(0.055);
       await _ambient.stop();
       try {
         await _ambient.seek(Duration.zero);

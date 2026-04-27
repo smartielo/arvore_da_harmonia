@@ -507,7 +507,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Fruto dourado!'),
+        title: const Text('Maçã dourada!'),
         content: Text('Você bateu a meta do período!\n\nPrêmio: $premio'),
         actions: [
           TextButton(
@@ -521,37 +521,145 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Widget _buildFrutoDourado(Size treeSize) {
     return Positioned(
-      left: (treeSize.width * 0.50) - 30,
-      top: (treeSize.height * 0.43) - 30,
+      left: (treeSize.width * 0.50) - 43,
+      top: (treeSize.height * 0.43) - 44,
       child: GestureDetector(
         onTap: _mostrarPremioDoFruto,
         child: AnimatedBuilder(
           animation: _goldenFruitPulseController,
           builder: (context, child) {
             final pulse = Curves.easeInOut.transform(_goldenFruitPulseController.value);
-            final scale = 1.0 + (pulse * 0.08);
+            final scale = 1.0 + (pulse * 0.06);
             return Transform.scale(scale: scale, child: child);
           },
-          child: Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [Colors.yellow.shade300, Colors.amber.shade800],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.amber.withValues(alpha: 0.7),
-                  blurRadius: 12,
-                  spreadRadius: 1,
+          child: SizedBox(
+            width: 86,
+            height: 88,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned(
+                  left: 8,
+                  top: 25,
+                  child: Container(
+                    width: 34,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      gradient: LinearGradient(
+                        colors: [Colors.amber.shade100, Colors.amber.shade400, Colors.orange.shade700],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.amber.withValues(alpha: 0.56),
+                          blurRadius: 16,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                      border: Border.all(color: Colors.brown.shade700, width: 1.5),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 8,
+                  top: 25,
+                  child: Container(
+                    width: 34,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      gradient: LinearGradient(
+                        colors: [Colors.amber.shade100, Colors.amber.shade500, Colors.orange.shade700],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      border: Border.all(color: Colors.brown.shade700, width: 1.5),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 22,
+                  top: 39,
+                  child: Container(
+                    width: 42,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(22),
+                      gradient: LinearGradient(
+                        colors: [Colors.amber.shade300, Colors.orange.shade700],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      border: Border.all(color: Colors.brown.shade700, width: 1.3),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 39,
+                  top: 2,
+                  child: Transform.rotate(
+                    angle: 0.1,
+                    child: Container(
+                      width: 7,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: Colors.brown.shade700,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 46,
+                  top: 8,
+                  child: Transform.rotate(
+                    angle: -0.5,
+                    child: Container(
+                      width: 24,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: Colors.lightGreen.shade600,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.green.shade900, width: 1),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 26,
+                  top: 37,
+                  child: Container(
+                    width: 18,
+                    height: 11,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 20,
+                  top: 51,
+                  child: Container(
+                    width: 9,
+                    height: 9,
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade50,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.amber.withValues(alpha: 0.5),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
-              border: Border.all(color: Colors.orange.shade900, width: 2),
             ),
-            child: const Icon(Icons.star, color: Colors.white, size: 28),
           ),
         ),
       ),

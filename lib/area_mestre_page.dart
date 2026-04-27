@@ -28,6 +28,7 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
   bool _soundTask = true;
   bool _soundCycle = true;
   bool _soundAmbient = false;
+  double _soundIntensity = 2;
   bool _isAmbientTesting = false;
   AppSnapshot? _snap;
   DateTime? _dataLimitePeriodo;
@@ -53,6 +54,7 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
       _soundTask = snap.soundTaskEnabled;
       _soundCycle = snap.soundCycleEnabled;
       _soundAmbient = snap.soundAmbientEnabled;
+      _soundIntensity = snap.soundIntensity.toDouble();
       _dataLimitePeriodo = snap.periodoFim;
       _loading = false;
     });
@@ -161,6 +163,7 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
     await AppRepository.instance.saveSoundTaskEnabled(_soundTask);
     await AppRepository.instance.saveSoundCycleEnabled(_soundCycle);
     await AppRepository.instance.saveSoundAmbientEnabled(_soundAmbient);
+    await AppRepository.instance.saveSoundIntensity(_soundIntensity.round().clamp(1, 3));
     await AppRepository.instance.savePeriodoFim(_dataLimitePeriodo);
     await AppSounds.refreshAmbientFromSettings();
 
@@ -410,6 +413,29 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
                 if (!mounted) return;
                 setState(() => _isAmbientTesting = false);
               },
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Intensidade dos efeitos sonoros'),
+              subtitle: Slider(
+                value: _soundIntensity,
+                min: 1,
+                max: 3,
+                divisions: 2,
+                label: _soundIntensity <= 1.5
+                    ? 'Suave'
+                    : (_soundIntensity >= 2.5 ? 'Vivo' : 'Equilibrado'),
+                onChanged: (v) {
+                  setState(() => _soundIntensity = v);
+                },
+                onChangeEnd: (v) async {
+                  final intValue = v.round().clamp(1, 3);
+                  if (_soundIntensity != intValue.toDouble()) {
+                    setState(() => _soundIntensity = intValue.toDouble());
+                  }
+                  await AppRepository.instance.saveSoundIntensity(intValue);
+                },
+              ),
             ),
             const SizedBox(height: 8),
             Wrap(
