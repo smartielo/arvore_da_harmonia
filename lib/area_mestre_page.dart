@@ -7,6 +7,10 @@ import 'services/app_sounds.dart';
 import 'services/device_auth_gate.dart';
 import 'tarefas_semana_page.dart';
 
+enum _AmbientTrackMode { off, calm, animated }
+
+enum _HistoryFilter { all, achieved, notAchieved, recent }
+
 class AreaMestrePage extends StatefulWidget {
   const AreaMestrePage({super.key});
 
@@ -28,8 +32,10 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
   bool _soundTask = true;
   bool _soundCycle = true;
   bool _soundAmbient = false;
+  bool _soundAmbientAnimated = false;
   double _soundIntensity = 2;
   bool _isAmbientTesting = false;
+  _HistoryFilter _historyFilter = _HistoryFilter.recent;
   AppSnapshot? _snap;
   DateTime? _dataLimitePeriodo;
 
@@ -54,6 +60,7 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
       _soundTask = snap.soundTaskEnabled;
       _soundCycle = snap.soundCycleEnabled;
       _soundAmbient = snap.soundAmbientEnabled;
+      _soundAmbientAnimated = snap.soundAmbientAnimated;
       _soundIntensity = snap.soundIntensity.toDouble();
       _dataLimitePeriodo = snap.periodoFim;
       _loading = false;
@@ -163,6 +170,7 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
     await AppRepository.instance.saveSoundTaskEnabled(_soundTask);
     await AppRepository.instance.saveSoundCycleEnabled(_soundCycle);
     await AppRepository.instance.saveSoundAmbientEnabled(_soundAmbient);
+    await AppRepository.instance.saveSoundAmbientAnimated(_soundAmbientAnimated);
     await AppRepository.instance.saveSoundIntensity(_soundIntensity.round().clamp(1, 3));
     await AppRepository.instance.savePeriodoFim(_dataLimitePeriodo);
     await AppSounds.refreshAmbientFromSettings();
@@ -191,9 +199,31 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
       setState(() => _isAmbientTesting = false);
       return;
     }
-    await AppSounds.startAmbientTest(settingsEnabled: _soundAmbient);
+    await AppSounds.startAmbientTest(
+      settingsEnabled: _soundAmbient,
+      animated: _soundAmbientAnimated,
+    );
     if (!mounted) return;
     setState(() => _isAmbientTesting = true);
+  }
+
+  _AmbientTrackMode get _ambientTrackMode {
+    if (!_soundAmbient) return _AmbientTrackMode.off;
+    return _soundAmbientAnimated ? _AmbientTrackMode.animated : _AmbientTrackMode.calm;
+  }
+
+  Future<void> _setAmbientTrackMode(_AmbientTrackMode mode) async {
+    if (_isAmbientTesting) {
+      await AppSounds.stopAmbientTest(settingsEnabled: _soundAmbient);
+    }
+    setState(() {
+      _soundAmbient = mode != _AmbientTrackMode.off;
+      _soundAmbientAnimated = mode == _AmbientTrackMode.animated;
+      _isAmbientTesting = false;
+    });
+    await AppRepository.instance.saveSoundAmbientEnabled(_soundAmbient);
+    await AppRepository.instance.saveSoundAmbientAnimated(_soundAmbientAnimated);
+    await AppSounds.refreshAmbientFromSettings();
   }
 
   void _encerrarSemana() {
@@ -259,6 +289,13 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
     final snap = _snap!;
     final somaT = snap.somaPontosTarefas;
     final okTarefas = snap.tarefasBatemMeta;
+    final historicoBase = snap.historico.reversed.toList();
+    final historicoFiltrado = switch (_historyFilter) {
+      _HistoryFilter.all => historicoBase,
+      _HistoryFilter.achieved => historicoBase.where((h) => h.metaCumprida).toList(),
+      _HistoryFilter.notAchieved => historicoBase.where((h) => !h.metaCumprida).toList(),
+      _HistoryFilter.recent => historicoBase.take(10).toList(),
+    };
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7F1),
@@ -398,20 +435,33 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
                 await AppRepository.instance.saveSoundCycleEnabled(v);
               },
             ),
-            SwitchListTile(
+            ListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Som ambiente bem leve (loop)'),
-              subtitle: const Text('Pode aumentar o uso de bateria.'),
-              value: _soundAmbient,
-              onChanged: (v) async {
-                if (_isAmbientTesting) {
-                  await AppSounds.stopAmbientTest(settingsEnabled: _soundAmbient);
-                }
-                setState(() => _soundAmbient = v);
-                await AppRepository.instance.saveSoundAmbientEnabled(v);
-                await AppSounds.refreshAmbientFromSettings();
-                if (!mounted) return;
-                setState(() => _isAmbientTesting = false);
+              title: const Text('Música de fundo'),
+              subtitle: const Text('Escolha o clima: desligado, calmo ou animado.'),
+            ),
+            SegmentedButton<_AmbientTrackMode>(
+              segments: const [
+                ButtonSegment<_AmbientTrackMode>(
+                  value: _AmbientTrackMode.off,
+                  label: Text('Desligado'),
+                  icon: Icon(Icons.volume_off_outlined),
+                ),
+                ButtonSegment<_AmbientTrackMode>(
+                  value: _AmbientTrackMode.calm,
+                  label: Text('Calma'),
+                  icon: Icon(Icons.spa_outlined),
+                ),
+                ButtonSegment<_AmbientTrackMode>(
+                  value: _AmbientTrackMode.animated,
+                  label: Text('Animada'),
+                  icon: Icon(Icons.graphic_eq),
+                ),
+              ],
+              selected: {_ambientTrackMode},
+              onSelectionChanged: (selection) async {
+                final mode = selection.first;
+                await _setAmbientTrackMode(mode);
               },
             ),
             ListTile(
@@ -582,19 +632,46 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
               'Registrado ao encerrar a semana (limpar a árvore).',
               style: TextStyle(fontSize: 13, color: Colors.grey[700]),
             ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ChoiceChip(
+                  label: const Text('Últimos 10'),
+                  selected: _historyFilter == _HistoryFilter.recent,
+                  onSelected: (_) => setState(() => _historyFilter = _HistoryFilter.recent),
+                ),
+                ChoiceChip(
+                  label: const Text('Todos'),
+                  selected: _historyFilter == _HistoryFilter.all,
+                  onSelected: (_) => setState(() => _historyFilter = _HistoryFilter.all),
+                ),
+                ChoiceChip(
+                  label: const Text('Meta cumprida'),
+                  selected: _historyFilter == _HistoryFilter.achieved,
+                  onSelected: (_) => setState(() => _historyFilter = _HistoryFilter.achieved),
+                ),
+                ChoiceChip(
+                  label: const Text('Meta não cumprida'),
+                  selected: _historyFilter == _HistoryFilter.notAchieved,
+                  onSelected: (_) => setState(() => _historyFilter = _HistoryFilter.notAchieved),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
-            if (snap.historico.isEmpty)
+            if (historicoFiltrado.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Center(
                   child: Text(
-                    'Ainda não há registros.',
+                    'Nenhum item para esse filtro.',
                     style: TextStyle(color: Colors.grey[600]),
                   ),
                 ),
               )
             else
-              ...snap.historico.reversed.map((h) => _HistoricoCard(item: h)),
+              ...historicoFiltrado.map((h) => _HistoricoCard(item: h)),
             const SizedBox(height: 28),
             const Divider(),
             const SizedBox(height: 16),

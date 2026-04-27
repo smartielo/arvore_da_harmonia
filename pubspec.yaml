@@ -72,9 +72,11 @@ flutter:
     - assets/images/noite.png
     - assets/images/logo_cc.jpg
     - assets/images/logo_extensao.jpg
+    - assets/images/maca-dourada.png
     - assets/sounds/tarefa.wav
     - assets/sounds/ciclo.wav
     - assets/sounds/fundo.wav
+    - assets/sounds/fundo_animado.m4a
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

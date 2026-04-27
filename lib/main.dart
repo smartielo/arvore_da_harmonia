@@ -141,7 +141,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     });
     unawaited(AppRepository.instance.savePeriodoCelebrado(true));
     _pararEscutaShake();
-    _fallController.reset();
     _lastHapticStep = -1;
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -519,146 +518,109 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  Future<void> _mostrarResumoProgresso() async {
+    final snap = await AppRepository.instance.load();
+    if (!mounted) return;
+
+    final faltamPontos = (weeklyGoal - placedMoitasCount).clamp(0, weeklyGoal);
+    final tarefas = snap.tarefas;
+    final concluidas = tarefas.where((t) => snap.tarefasConcluidasIds.contains(t.id)).toList();
+    final pendentes = tarefas.where((t) => !snap.tarefasConcluidasIds.contains(t.id)).toList();
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (ctx) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Progresso do período',
+                style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text('Total: $placedMoitasCount / $weeklyGoal pontos'),
+              Text(
+                faltamPontos == 0
+                    ? 'Meta atingida! Toque na maçã dourada para ver o prêmio.'
+                    : 'Faltam $faltamPontos pontos para chegar no prêmio.',
+              ),
+              const SizedBox(height: 14),
+              if (tarefas.isEmpty)
+                const Text('Não há tarefas cadastradas. O app está em modo +1 por toque.')
+              else ...[
+                Text(
+                  'Metas concluídas (${concluidas.length})',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 6),
+                if (concluidas.isEmpty)
+                  const Text('- Nenhuma tarefa concluída ainda.')
+                else
+                  ...concluidas.map((t) => Text('- ${t.titulo} (+${t.pontos})')),
+                const SizedBox(height: 12),
+                Text(
+                  'Metas pendentes (${pendentes.length})',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 6),
+                if (pendentes.isEmpty)
+                  const Text('- Nenhuma pendente. Tudo concluído!')
+                else
+                  ...pendentes.map((t) => Text('- ${t.titulo} (+${t.pontos})')),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildFrutoDourado(Size treeSize) {
     return Positioned(
-      left: (treeSize.width * 0.50) - 43,
-      top: (treeSize.height * 0.43) - 44,
+      left: (treeSize.width * 0.50) - 38,
+      top: (treeSize.height * 0.43) - 40,
       child: GestureDetector(
         onTap: _mostrarPremioDoFruto,
         child: AnimatedBuilder(
-          animation: _goldenFruitPulseController,
+          animation: Listenable.merge([_goldenFruitPulseController, _fallController]),
           builder: (context, child) {
             final pulse = Curves.easeInOut.transform(_goldenFruitPulseController.value);
-            final scale = 1.0 + (pulse * 0.06);
-            return Transform.scale(scale: scale, child: child);
+            final t = _fallController.isDismissed ? 0.0 : Curves.easeIn.transform(_fallController.value);
+            final scale = 1.0 + (pulse * 0.045 * (1.0 - t));
+            final driftX = (t * 18.0) - (t * t * 6.0);
+            final fallY = t * treeSize.height * 0.70;
+            final opacity = (1.0 - t * 0.9).clamp(0.0, 1.0);
+            final angle = t * 0.35;
+            return Transform.translate(
+              offset: Offset(driftX, fallY),
+              child: Transform.rotate(
+                angle: angle,
+                child: Opacity(
+                  opacity: opacity,
+                  child: Transform.scale(scale: scale, child: child),
+                ),
+              ),
+            );
           },
-          child: SizedBox(
-            width: 86,
-            height: 88,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Positioned(
-                  left: 8,
-                  top: 25,
-                  child: Container(
-                    width: 34,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      gradient: LinearGradient(
-                        colors: [Colors.amber.shade100, Colors.amber.shade400, Colors.orange.shade700],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.amber.withValues(alpha: 0.56),
-                          blurRadius: 16,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                      border: Border.all(color: Colors.brown.shade700, width: 1.5),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  right: 8,
-                  top: 25,
-                  child: Container(
-                    width: 34,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      gradient: LinearGradient(
-                        colors: [Colors.amber.shade100, Colors.amber.shade500, Colors.orange.shade700],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      border: Border.all(color: Colors.brown.shade700, width: 1.5),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 22,
-                  top: 39,
-                  child: Container(
-                    width: 42,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(22),
-                      gradient: LinearGradient(
-                        colors: [Colors.amber.shade300, Colors.orange.shade700],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      border: Border.all(color: Colors.brown.shade700, width: 1.3),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 39,
-                  top: 2,
-                  child: Transform.rotate(
-                    angle: 0.1,
-                    child: Container(
-                      width: 7,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: Colors.brown.shade700,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 46,
-                  top: 8,
-                  child: Transform.rotate(
-                    angle: -0.5,
-                    child: Container(
-                      width: 24,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: Colors.lightGreen.shade600,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.green.shade900, width: 1),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 26,
-                  top: 37,
-                  child: Container(
-                    width: 18,
-                    height: 11,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  right: 20,
-                  top: 51,
-                  child: Container(
-                    width: 9,
-                    height: 9,
-                    decoration: BoxDecoration(
-                      color: Colors.amber.shade50,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.amber.withValues(alpha: 0.5),
-                          blurRadius: 8,
-                          spreadRadius: 1,
-                        ),
-                      ],
-                    ),
-                  ),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.amber.withValues(alpha: 0.42),
+                  blurRadius: 18,
+                  spreadRadius: 2,
                 ),
               ],
+            ),
+            child: Image.asset(
+              'assets/images/maca-dourada.png',
+              width: 76,
+              height: 76,
+              fit: BoxFit.contain,
             ),
           ),
         ),
@@ -669,6 +631,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   double _driftParaIndice(int i) => ((i * 17) % 11 - 5) * 6.0;
 
   Widget _buildMoitasNaArvore(Size treeSize) {
+    if (_periodoCelebrado) {
+      return const SizedBox.shrink();
+    }
     return AnimatedBuilder(
       animation: _fallController,
       builder: (context, child) {
@@ -719,7 +684,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   clipBehavior: Clip.none,
                   children: [
                     _buildMoitasNaArvore(treeSize),
-                    if (placedMoitasCount >= weeklyGoal) _buildFrutoDourado(treeSize),
+                    if (placedMoitasCount >= weeklyGoal && !_periodoCelebrado)
+                      _buildFrutoDourado(treeSize),
                   ],
                 ),
               ),
@@ -745,30 +711,37 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       },
                       style: IconButton.styleFrom(backgroundColor: Colors.black26),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: const [
-                          BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Progresso: $placedMoitasCount / $weeklyGoal',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.green),
-                          ),
-                          if (_prazoPeriodo != null) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              'Prazo: ${_fmtDia(_prazoPeriodo!)}',
-                              style: TextStyle(fontSize: 12, color: Colors.grey[800]),
-                            ),
+                    GestureDetector(
+                      onTap: _mostrarResumoProgresso,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: const [
+                            BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
                           ],
-                        ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Progresso: $placedMoitasCount / $weeklyGoal',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.green),
+                            ),
+                            const Text(
+                              'Toque para detalhes',
+                              style: TextStyle(fontSize: 11, color: Colors.black54),
+                            ),
+                            if (_prazoPeriodo != null) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                'Prazo: ${_fmtDia(_prazoPeriodo!)}',
+                                style: TextStyle(fontSize: 12, color: Colors.grey[800]),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                     ),
                     IconButton(
@@ -818,7 +791,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ],
           FloatingActionButton.extended(
             heroTag: 'fab_add_task',
-            onPressed: _addMoita,
+            onPressed: _periodoCelebrado ? null : _addMoita,
             backgroundColor: Colors.green,
             elevation: 6,
             icon: const Icon(Icons.park, color: Colors.white),

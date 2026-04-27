@@ -15,6 +15,7 @@ class AppSounds {
   static bool _ambientPlaying = false;
   static bool _ambientTemporary = false;
   static bool _ambientTestActive = false;
+  static bool _ambientCurrentAnimated = false;
 
   static bool get isAmbientTestActive => _ambientTestActive;
 
@@ -170,14 +171,22 @@ class AppSounds {
     if (kIsWeb) return;
     final s = await AppRepository.instance.load();
     if (!s.soundAmbientEnabled) return;
-    if (_ambientPlaying && !_ambientTemporary) return;
+    if (_ambientPlaying && !_ambientTemporary && _ambientCurrentAnimated == s.soundAmbientAnimated) {
+      return;
+    }
     if (_ambientPlaying && _ambientTemporary) {
       await stopAmbient();
     }
-    await _startAmbient(temporary: false);
+    if (_ambientPlaying && !_ambientTemporary) {
+      await stopAmbient();
+    }
+    await _startAmbient(temporary: false, animated: s.soundAmbientAnimated);
   }
 
-  static Future<void> _startAmbient({required bool temporary}) async {
+  static Future<void> _startAmbient({
+    required bool temporary,
+    required bool animated,
+  }) async {
     await _ensurePlayersConfigured();
     try {
       await _ambient.setReleaseMode(ReleaseMode.loop);
@@ -186,13 +195,16 @@ class AppSounds {
       try {
         await _ambient.seek(Duration.zero);
       } on Object catch (_) {}
-      await _ambient.play(AssetSource('sounds/fundo.wav'));
+      final asset = animated ? 'sounds/fundo_animado.m4a' : 'sounds/fundo.wav';
+      await _ambient.play(AssetSource(asset));
       _ambientPlaying = true;
       _ambientTemporary = temporary;
-      _log('Ambient iniciado state=${_stateOf(_ambient)} temporary=$temporary');
+      _ambientCurrentAnimated = animated;
+      _log('Ambient iniciado state=${_stateOf(_ambient)} temporary=$temporary animated=$animated');
     } on Object catch (e) {
       _ambientPlaying = false;
       _ambientTemporary = false;
+      _ambientCurrentAnimated = false;
       _log('Falha ao iniciar som ambiente: $e');
     }
   }
@@ -206,17 +218,21 @@ class AppSounds {
     }
     _ambientPlaying = false;
     _ambientTemporary = false;
+    _ambientCurrentAnimated = false;
     _log('Ambient parado state=${_stateOf(_ambient)}');
   }
 
-  static Future<void> startAmbientTest({required bool settingsEnabled}) async {
+  static Future<void> startAmbientTest({
+    required bool settingsEnabled,
+    required bool animated,
+  }) async {
     if (kIsWeb) return;
     _ambientTestActive = true;
     final temporary = !settingsEnabled;
     if (_ambientPlaying) {
       await stopAmbient();
     }
-    await _startAmbient(temporary: temporary);
+    await _startAmbient(temporary: temporary, animated: animated);
   }
 
   static Future<void> stopAmbientTest({required bool settingsEnabled}) async {

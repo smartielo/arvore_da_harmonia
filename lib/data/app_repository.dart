@@ -16,6 +16,7 @@ class AppSnapshot {
   bool soundTaskEnabled;
   bool soundCycleEnabled;
   bool soundAmbientEnabled;
+  bool soundAmbientAnimated;
   /// 1 = suave, 2 = equilibrado, 3 = vivo
   int soundIntensity;
   List<TarefaSemana> tarefas;
@@ -35,6 +36,7 @@ class AppSnapshot {
     required this.soundTaskEnabled,
     required this.soundCycleEnabled,
     required this.soundAmbientEnabled,
+    required this.soundAmbientAnimated,
     required this.soundIntensity,
     required this.tarefas,
     required this.tarefasConcluidasIds,
@@ -62,6 +64,7 @@ class AppRepository {
   static const _kSoundTask = 'sound_task';
   static const _kSoundCycle = 'sound_cycle';
   static const _kSoundAmbient = 'sound_ambient';
+  static const _kSoundAmbientAnimated = 'sound_ambient_animated';
   static const _kSoundIntensity = 'sound_intensity';
   static const _kTarefas = 'tarefas_json';
   static const _kConcluidas = 'tarefas_concluidas_json';
@@ -82,6 +85,7 @@ class AppRepository {
     final st = p.getBool(_kSoundTask) ?? true;
     final sc = p.getBool(_kSoundCycle) ?? true;
     final sa = p.getBool(_kSoundAmbient) ?? false;
+    final saa = p.getBool(_kSoundAmbientAnimated) ?? false;
     final si = (p.getInt(_kSoundIntensity) ?? 2).clamp(1, 3);
     final inicioStr = p.getString(_kPeriodoInicio);
     final DateTime? inicio = inicioStr != null ? DateTime.tryParse(inicioStr) : null;
@@ -120,6 +124,7 @@ class AppRepository {
       soundTaskEnabled: st,
       soundCycleEnabled: sc,
       soundAmbientEnabled: sa,
+      soundAmbientAnimated: saa,
       soundIntensity: si,
       tarefas: tarefas,
       tarefasConcluidasIds: concluidas,
@@ -172,6 +177,10 @@ class AppRepository {
 
   Future<void> saveSoundAmbientEnabled(bool v) async {
     await _write((p) => p.setBool(_kSoundAmbient, v));
+  }
+
+  Future<void> saveSoundAmbientAnimated(bool v) async {
+    await _write((p) => p.setBool(_kSoundAmbientAnimated, v));
   }
 
   Future<void> saveSoundIntensity(int v) async {
