@@ -28,6 +28,7 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
   bool _soundTask = true;
   bool _soundCycle = true;
   bool _soundAmbient = false;
+  bool _isAmbientTesting = false;
   AppSnapshot? _snap;
   DateTime? _dataLimitePeriodo;
 
@@ -178,6 +179,18 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
       MaterialPageRoute(builder: (context) => TarefasSemanaPage(metaSemanal: meta)),
     );
     await _carregar();
+  }
+
+  Future<void> _toggleAmbientTest() async {
+    if (_isAmbientTesting) {
+      await AppSounds.stopAmbientTest(settingsEnabled: _soundAmbient);
+      if (!mounted) return;
+      setState(() => _isAmbientTesting = false);
+      return;
+    }
+    await AppSounds.startAmbientTest(settingsEnabled: _soundAmbient);
+    if (!mounted) return;
+    setState(() => _isAmbientTesting = true);
   }
 
   void _encerrarSemana() {
@@ -388,9 +401,14 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
               subtitle: const Text('Pode aumentar o uso de bateria.'),
               value: _soundAmbient,
               onChanged: (v) async {
+                if (_isAmbientTesting) {
+                  await AppSounds.stopAmbientTest(settingsEnabled: _soundAmbient);
+                }
                 setState(() => _soundAmbient = v);
                 await AppRepository.instance.saveSoundAmbientEnabled(v);
                 await AppSounds.refreshAmbientFromSettings();
+                if (!mounted) return;
+                setState(() => _isAmbientTesting = false);
               },
             ),
             const SizedBox(height: 8),
@@ -399,29 +417,23 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
               runSpacing: 8,
               children: [
                 OutlinedButton.icon(
-                  onPressed: _soundTask
-                      ? () async {
-                          await AppSounds.testTaskSfx();
-                        }
-                      : null,
+                  onPressed: () async {
+                    await AppSounds.testTaskSfx();
+                  },
                   icon: const Icon(Icons.music_note),
                   label: const Text('Testar tarefa'),
                 ),
                 OutlinedButton.icon(
-                  onPressed: _soundCycle
-                      ? () async {
-                          await AppSounds.testCycleSfx();
-                        }
-                      : null,
+                  onPressed: () async {
+                    await AppSounds.testCycleSfx();
+                  },
                   icon: const Icon(Icons.emoji_events),
                   label: const Text('Testar meta'),
                 ),
                 OutlinedButton.icon(
-                  onPressed: () async {
-                    await AppSounds.testAmbientLoop();
-                  },
-                  icon: Icon(_soundAmbient ? Icons.stop_circle_outlined : Icons.play_circle_outline),
-                  label: Text(_soundAmbient ? 'Alternar ambiente' : 'Testar ambiente'),
+                  onPressed: _toggleAmbientTest,
+                  icon: Icon(_isAmbientTesting ? Icons.stop_circle_outlined : Icons.play_circle_outline),
+                  label: Text(_isAmbientTesting ? 'Parar teste' : 'Iniciar teste'),
                 ),
               ],
             ),

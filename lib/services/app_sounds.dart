@@ -8,21 +8,47 @@ import '../data/app_repository.dart';
 class AppSounds {
   AppSounds._();
 
-  static final AudioPlayer _taskSfx = AudioPlayer();
-  static final AudioPlayer _cycleSfx = AudioPlayer();
-  static final AudioPlayer _ambient = AudioPlayer();
+  static AudioPlayer _taskSfx = AudioPlayer();
+  static AudioPlayer _cycleSfx = AudioPlayer();
+  static AudioPlayer _ambient = AudioPlayer();
   static bool _playersConfigured = false;
   static bool _ambientPlaying = false;
+  static bool _ambientTemporary = false;
+  static bool _ambientTestActive = false;
+
+  static bool get isAmbientTestActive => _ambientTestActive;
+
+  static String _stateOf(AudioPlayer player) => player.state.toString();
+
+  static AudioPlayer _playerFor(_AudioChannel channel) {
+    switch (channel) {
+      case _AudioChannel.task:
+        return _taskSfx;
+      case _AudioChannel.cycle:
+        return _cycleSfx;
+      case _AudioChannel.ambient:
+        return _ambient;
+    }
+  }
+
+  static Future<void> _configurePlayer(
+    AudioPlayer player, {
+    required ReleaseMode releaseMode,
+  }) async {
+    await player.setPlayerMode(PlayerMode.mediaPlayer);
+    await player.setReleaseMode(releaseMode);
+  }
 
   static Future<void> _ensurePlayersConfigured() async {
     if (_playersConfigured) return;
-    _playersConfigured = true;
     try {
-      await _taskSfx.setPlayerMode(PlayerMode.lowLatency);
-      await _cycleSfx.setPlayerMode(PlayerMode.lowLatency);
-      await _ambient.setPlayerMode(PlayerMode.mediaPlayer);
+      await _configurePlayer(_taskSfx, releaseMode: ReleaseMode.stop);
+      await _configurePlayer(_cycleSfx, releaseMode: ReleaseMode.stop);
+      await _configurePlayer(_ambient, releaseMode: ReleaseMode.loop);
+      _playersConfigured = true;
     } on Object catch (e) {
       _log('Falha ao configurar players: $e');
+      _playersConfigured = false;
     }
   }
 
@@ -32,50 +58,108 @@ class AppSounds {
     }
   }
 
-  static Future<void> _playSfx(AudioPlayer player, String asset, {double volume = 1.0}) async {
+  static Future<void> _recreatePlayer(_AudioChannel channel) async {
+    final oldPlayer = _playerFor(channel);
+    try {
+      await oldPlayer.dispose();
+    } on Object catch (_) {}
+
+    final newPlayer = AudioPlayer();
+    switch (channel) {
+      case _AudioChannel.task:
+        _taskSfx = newPlayer;
+        await _configurePlayer(_taskSfx, releaseMode: ReleaseMode.stop);
+        break;
+      case _AudioChannel.cycle:
+        _cycleSfx = newPlayer;
+        await _configurePlayer(_cycleSfx, releaseMode: ReleaseMode.stop);
+        break;
+      case _AudioChannel.ambient:
+        _ambient = newPlayer;
+        await _configurePlayer(_ambient, releaseMode: ReleaseMode.loop);
+        break;
+    }
+    _log('Player recriado para canal ${channel.name}.');
+  }
+
+  static Future<void> _playSfx(
+    _AudioChannel channel,
+    String asset, {
+    double volume = 1.0,
+    bool retrying = false,
+  }) async {
     if (kIsWeb) return;
     await _ensurePlayersConfigured();
+    final player = _playerFor(channel);
     try {
+      await player.setReleaseMode(ReleaseMode.stop);
+      await player.stop();
+      try {
+        await player.seek(Duration.zero);
+      } on Object catch (_) {}
       await player.setVolume(volume.clamp(0.0, 1.0));
       await player.play(AssetSource(asset));
+      _log('Play "$asset" canal=${channel.name} state=${_stateOf(player)}');
     } on Object catch (e) {
-      _log('Falha ao reproduzir "$asset": $e');
+      _log('Falha ao reproduzir "$asset" canal=${channel.name} state=${_stateOf(player)} erro=$e');
+      if (retrying) return;
+      try {
+        await _recreatePlayer(channel);
+        await _playSfx(channel, asset, volume: volume, retrying: true);
+      } on Object catch (recreateError) {
+        _log('Falha ao recuperar player ${channel.name}: $recreateError');
+      }
     }
   }
 
   static Future<void> playTarefaConcluida() async {
     final s = await AppRepository.instance.load();
     if (!s.soundTaskEnabled) return;
-    await _playSfx(_taskSfx, 'sounds/tarefa.wav', volume: 0.85);
+    await _playSfx(_AudioChannel.task, 'sounds/tarefa.wav', volume: 0.85);
   }
 
   static Future<void> playMetaAtingida() async {
     final s = await AppRepository.instance.load();
     if (!s.soundCycleEnabled) return;
-    await _playSfx(_cycleSfx, 'sounds/ciclo.wav', volume: 0.9);
+    await _playSfx(_AudioChannel.cycle, 'sounds/ciclo.wav', volume: 0.9);
   }
 
   static Future<void> testTaskSfx() async {
-    await _playSfx(_taskSfx, 'sounds/tarefa.wav', volume: 0.85);
+    await _playSfx(_AudioChannel.task, 'sounds/tarefa.wav', volume: 0.85);
   }
 
   static Future<void> testCycleSfx() async {
-    await _playSfx(_cycleSfx, 'sounds/ciclo.wav', volume: 0.9);
+    await _playSfx(_AudioChannel.cycle, 'sounds/ciclo.wav', volume: 0.9);
   }
 
   /// Inicia fundo bem baixo em loop (se habilitado).
   static Future<void> startAmbientIfEnabled() async {
-    if (kIsWeb || _ambientPlaying) return;
+    if (kIsWeb) return;
     final s = await AppRepository.instance.load();
     if (!s.soundAmbientEnabled) return;
+    if (_ambientPlaying && !_ambientTemporary) return;
+    if (_ambientPlaying && _ambientTemporary) {
+      await stopAmbient();
+    }
+    await _startAmbient(temporary: false);
+  }
+
+  static Future<void> _startAmbient({required bool temporary}) async {
     await _ensurePlayersConfigured();
     try {
       await _ambient.setReleaseMode(ReleaseMode.loop);
       await _ambient.setVolume(0.08);
+      await _ambient.stop();
+      try {
+        await _ambient.seek(Duration.zero);
+      } on Object catch (_) {}
       await _ambient.play(AssetSource('sounds/fundo.wav'));
       _ambientPlaying = true;
+      _ambientTemporary = temporary;
+      _log('Ambient iniciado state=${_stateOf(_ambient)} temporary=$temporary');
     } on Object catch (e) {
       _ambientPlaying = false;
+      _ambientTemporary = false;
       _log('Falha ao iniciar som ambiente: $e');
     }
   }
@@ -88,26 +172,32 @@ class AppSounds {
       _log('Falha ao parar som ambiente: $e');
     }
     _ambientPlaying = false;
+    _ambientTemporary = false;
+    _log('Ambient parado state=${_stateOf(_ambient)}');
   }
 
-  static Future<void> testAmbientLoop() async {
-    await _ensurePlayersConfigured();
+  static Future<void> startAmbientTest({required bool settingsEnabled}) async {
+    if (kIsWeb) return;
+    _ambientTestActive = true;
+    final temporary = !settingsEnabled;
     if (_ambientPlaying) {
+      await stopAmbient();
+    }
+    await _startAmbient(temporary: temporary);
+  }
+
+  static Future<void> stopAmbientTest({required bool settingsEnabled}) async {
+    if (!_ambientTestActive) return;
+    _ambientTestActive = false;
+    if (!settingsEnabled) {
       await stopAmbient();
       return;
     }
-    try {
-      await _ambient.setReleaseMode(ReleaseMode.loop);
-      await _ambient.setVolume(0.08);
-      await _ambient.play(AssetSource('sounds/fundo.wav'));
-      _ambientPlaying = true;
-    } on Object catch (e) {
-      _ambientPlaying = false;
-      _log('Falha ao testar som ambiente: $e');
-    }
+    await startAmbientIfEnabled();
   }
 
   static Future<void> refreshAmbientFromSettings() async {
+    _ambientTestActive = false;
     final s = await AppRepository.instance.load();
     if (s.soundAmbientEnabled) {
       await startAmbientIfEnabled();
@@ -118,8 +208,15 @@ class AppSounds {
 
   static Future<void> dispose() async {
     await stopAmbient();
+    _ambientTestActive = false;
     await _taskSfx.dispose();
     await _cycleSfx.dispose();
     await _ambient.dispose();
   }
+}
+
+enum _AudioChannel {
+  task,
+  cycle,
+  ambient,
 }

@@ -47,6 +47,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   int placedMoitasCount = 0;
   int weeklyGoal = 100;
+  String _weeklyPrize = '';
   bool _periodoCelebrado = false;
   bool _aguardandoShakePosEncerramento = false;
   bool _vibrationEnabled = true;
@@ -55,6 +56,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   StreamSubscription<UserAccelerometerEvent>? _accelSub;
   late final AnimationController _fallController;
+  late final AnimationController _goldenFruitPulseController;
   int _lastHapticStep = -1;
 
   final List<Offset> predefinedLeafPositions = [
@@ -93,6 +95,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       vsync: this,
       duration: const Duration(milliseconds: 2800),
     )..addStatusListener(_onFallStatus);
+    _goldenFruitPulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+      lowerBound: 0.0,
+      upperBound: 1.0,
+    )..repeat(reverse: true);
     _fallController.addListener(_onFallTick);
     _bootstrap();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -106,6 +114,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     if (!mounted) return;
     setState(() {
       weeklyGoal = s.weeklyGoal;
+      _weeklyPrize = s.weeklyPrize;
       placedMoitasCount = s.placedMoitasCount;
       _periodoCelebrado = s.periodoCelebrado;
       _vibrationEnabled = s.vibrationEnabled;
@@ -147,6 +156,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _fallController.removeListener(_onFallTick);
     _fallController.removeStatusListener(_onFallStatus);
     _fallController.dispose();
+    _goldenFruitPulseController.dispose();
     super.dispose();
   }
 
@@ -414,6 +424,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     if (!mounted) return;
     setState(() {
       weeklyGoal = s.weeklyGoal;
+      _weeklyPrize = s.weeklyPrize;
       placedMoitasCount = s.placedMoitasCount;
       _periodoCelebrado = s.periodoCelebrado;
       _vibrationEnabled = s.vibrationEnabled;
@@ -433,6 +444,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void _aplicarSnapshot(AppSnapshot s) {
     setState(() {
       weeklyGoal = s.weeklyGoal;
+      _weeklyPrize = s.weeklyPrize;
       placedMoitasCount = s.placedMoitasCount;
       _periodoCelebrado = s.periodoCelebrado;
       _vibrationEnabled = s.vibrationEnabled;
@@ -489,6 +501,63 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  Future<void> _mostrarPremioDoFruto() async {
+    final premio = _weeklyPrize.trim().isEmpty ? 'Prêmio definido pelos responsáveis' : _weeklyPrize.trim();
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Fruto dourado!'),
+        content: Text('Você bateu a meta do período!\n\nPrêmio: $premio'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Que legal!'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFrutoDourado(Size treeSize) {
+    return Positioned(
+      left: (treeSize.width * 0.50) - 30,
+      top: (treeSize.height * 0.43) - 30,
+      child: GestureDetector(
+        onTap: _mostrarPremioDoFruto,
+        child: AnimatedBuilder(
+          animation: _goldenFruitPulseController,
+          builder: (context, child) {
+            final pulse = Curves.easeInOut.transform(_goldenFruitPulseController.value);
+            final scale = 1.0 + (pulse * 0.08);
+            return Transform.scale(scale: scale, child: child);
+          },
+          child: Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [Colors.yellow.shade300, Colors.amber.shade800],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.amber.withValues(alpha: 0.7),
+                  blurRadius: 12,
+                  spreadRadius: 1,
+                ),
+              ],
+              border: Border.all(color: Colors.orange.shade900, width: 2),
+            ),
+            child: const Icon(Icons.star, color: Colors.white, size: 28),
+          ),
+        ),
+      ),
+    );
+  }
+
   double _driftParaIndice(int i) => ((i * 17) % 11 - 5) * 6.0;
 
   Widget _buildMoitasNaArvore(Size treeSize) {
@@ -538,21 +607,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             child: SizedBox.fromSize(
               key: ValueKey<int>(placedMoitasCount),
               size: treeSize,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  GestureDetector(
-                    onTapDown: (_) => _openParentMode(),
-                    child: Container(
-                      color: Colors.transparent,
-                      width: treeSize.width,
-                      height: treeSize.height,
-                    ),
-                  ),
-                  _buildMoitasNaArvore(treeSize),
-                ],
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    _buildMoitasNaArvore(treeSize),
+                    if (placedMoitasCount >= weeklyGoal) _buildFrutoDourado(treeSize),
+                  ],
+                ),
               ),
-            ),
           ),
 
           Positioned(
