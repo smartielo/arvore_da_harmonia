@@ -77,7 +77,7 @@ class CreditosPage extends StatelessWidget {
             ),
             const SizedBox(height: 32),
 
-            // ÁREA DE LOGOS OBRIGATÓRIAS
+            // ÁREA DE LOGOS OBRIGATÓRIAS.
             const Divider(),
             const SizedBox(height: 16),
             const Text('Desenvolvimento:', style: TextStyle(fontWeight: FontWeight.bold)),
