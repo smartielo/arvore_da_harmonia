@@ -1,5 +1,5 @@
-package com.arvoredaharmonia.arvore_da_harmonia
-
+package br.edu.unisagrado.arvoredaharmonia
+ 
 import io.flutter.embedding.android.FlutterFragmentActivity
-
+ 
 class MainActivity : FlutterFragmentActivity()

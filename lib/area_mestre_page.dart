@@ -437,19 +437,21 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
             const SizedBox(height: 16),
             const Text('Segurança do app', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
              const SizedBox(height: 8),
-             SizedBox(
-               width: double.infinity,
-               height: 50,
-               child: ElevatedButton(
-                 style: ElevatedButton.styleFrom(
-                   backgroundColor: Colors.blueGrey[800],
-                   foregroundColor: Colors.white,
-                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                 ),
-                 onPressed: _salvarConfiguracoes,
-                 child: const Text('Salvar configurações', style: TextStyle(fontSize: 16)),
-               ),
-             ),
+    SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.teal[700],
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        onPressed: _abrirTarefas,
+        icon: const Icon(Icons.checklist),
+        label: const Text('Gerenciar Tarefas da Criança', style: TextStyle(fontSize: 16)),
+      ),
+    ),
+
              const SizedBox(height: 36),
 
             const Divider(),

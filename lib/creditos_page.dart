@@ -3,6 +3,39 @@ import 'package:flutter/material.dart';
 class CreditosPage extends StatelessWidget {
   const CreditosPage({super.key});
 
+  void _showPrivacyPolicy(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Política de Privacidade'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('1. Objetivo', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text('Este aplicativo tem como finalidade auxiliar no controle de metas e tarefas para crianças, promovendo a harmonia familiar.'),
+              const SizedBox(height: 12),
+              const Text('2. Coleta de Dados e Biometria', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text('O app utiliza a permissão de biometria do dispositivo exclusivamente para autenticar o acesso à Área do Responsável. Os dados biométricos são processados e armazenados localmente pelo sistema operacional do dispositivo; o aplicativo não tem acesso nem armazena as digitais ou reconhecimento facial em servidores.'),
+              const SizedBox(height: 12),
+              const Text('3. Segurança', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text('Todas as configurações de metas e prêmios são armazenadas localmente no dispositivo do usuário, garantindo que as informações não saiam do aparelho.'),
+              const SizedBox(height: 12),
+              const Text('4. Contato', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text('Para dúvidas ou solicitações, entre em contato com a equipe de desenvolvimento através dos canais institucionais da UNISAGRADO.'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Fechar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -40,7 +73,7 @@ class CreditosPage extends StatelessWidget {
 
             _buildInfoCard(
               title: 'Equipe de Desenvolvimento',
-              content: 'Gabriel M.\nGabriel F.\nJoão Vitor', // BACKEND/EQUIPE: Preencher os nomes aqui
+              content: 'Gabriel Martielo da Silva\nGabriel Furlaneto de Luiz\nJoão Vitor de Paula Diniz',
             ),
             const SizedBox(height: 32),
 
@@ -49,21 +82,30 @@ class CreditosPage extends StatelessWidget {
             const SizedBox(height: 16),
             const Text('Desenvolvimento:', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            // FRONTEND: Adicionar a imagem do logo da Ciência da Computação nos assets depois
             Image.asset(
-              'assets/images/logo_cc.jpg', // Confirme se o nome do arquivo está igual
+              'assets/images/logo_cc.jpg',
               height: 60,
-              fit: BoxFit.contain, // Isso garante que a imagem não fique esticada
+              fit: BoxFit.contain,
             ),
 
             const SizedBox(height: 24),
             const Text('Apoio:', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            // FRONTEND: Adicionar a imagem do logo da Coordenadoria de Extensão nos assets depois
             Image.asset(
-              'assets/images/logo_extensao.jpg', // Confirme se o nome do arquivo está igual
+              'assets/images/logo_extensao.jpg',
               height: 60,
-              fit: BoxFit.contain, // Isso garante que a imagem não fique esticada
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(height: 32),
+            
+            OutlinedButton.icon(
+              onPressed: () => _showPrivacyPolicy(context),
+              icon: const Icon(Icons.privacy_tip_outlined),
+              label: const Text('Política de Privacidade'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
             ),
           ],
         ),

@@ -7,6 +7,7 @@ import 'package:sensors_plus/sensors_plus.dart';
 
 import 'area_mestre_page.dart';
 import 'creditos_page.dart';
+import 'manual_responsavel_page.dart';
 import 'data/app_repository.dart';
 import 'models/week_models.dart';
 import 'services/app_sounds.dart';
@@ -744,10 +745,26 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         ),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.lock_outline, color: Colors.white, size: 32),
-                      onPressed: _openParentMode,
-                      style: IconButton.styleFrom(backgroundColor: Colors.black26),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.help_outline, color: Colors.white, size: 32),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const ManualResponsavelPage()),
+                            );
+                          },
+                          style: IconButton.styleFrom(backgroundColor: Colors.black26),
+                        ),
+                        const SizedBox(height: 8),
+                        IconButton(
+                          icon: const Icon(Icons.lock_outline, color: Colors.white, size: 32),
+                          onPressed: _openParentMode,
+                          style: IconButton.styleFrom(backgroundColor: Colors.black26),
+                        ),
+                      ],
                     ),
                   ],
                 ),
