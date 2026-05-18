@@ -21,15 +21,12 @@ class AreaMestrePage extends StatefulWidget {
 class _AreaMestrePageState extends State<AreaMestrePage> {
   final TextEditingController _metaController = TextEditingController();
   final TextEditingController _premioController = TextEditingController();
-  final TextEditingController _pinAtualController = TextEditingController();
-  final TextEditingController _novoPinController = TextEditingController();
-  final TextEditingController _confirmarPinController = TextEditingController();
 
   bool _loading = true;
   bool _vibrationEnabled = true;
   double _vibrationIntensity = 2;
-  ParentAuthMode _authMode = ParentAuthMode.appPinOnly;
   bool _soundTask = true;
+
   bool _soundCycle = true;
   bool _soundAmbient = false;
   bool _soundAmbientAnimated = false;
@@ -56,7 +53,6 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
       _premioController.text = snap.weeklyPrize;
       _vibrationEnabled = snap.vibrationEnabled;
       _vibrationIntensity = snap.vibrationIntensity.toDouble();
-      _authMode = parentAuthModeFromStorage(snap.authModeStorage);
       _soundTask = snap.soundTaskEnabled;
       _soundCycle = snap.soundCycleEnabled;
       _soundAmbient = snap.soundAmbientEnabled;
@@ -66,6 +62,7 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
       _loading = false;
     });
   }
+
 
   String _fmtData(DateTime d) {
     final dd = d.day.toString().padLeft(2, '0');
@@ -92,64 +89,10 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
   void dispose() {
     _metaController.dispose();
     _premioController.dispose();
-    _pinAtualController.dispose();
-    _novoPinController.dispose();
-    _confirmarPinController.dispose();
     super.dispose();
   }
 
   bool _pinValido(String pin) => _pinRegex.hasMatch(pin);
-
-  Future<void> _alterarPin({required bool viaRecuperacao}) async {
-    final novoPin = _novoPinController.text.trim();
-    final confirmarPin = _confirmarPinController.text.trim();
-
-    if (!_pinValido(novoPin)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Novo PIN inválido. Use exatamente 4 dígitos numéricos.'), backgroundColor: Colors.red),
-      );
-      return;
-    }
-    if (confirmarPin != novoPin) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('A confirmação do novo PIN não confere.'), backgroundColor: Colors.red),
-      );
-      return;
-    }
-
-    if (viaRecuperacao) {
-      final okDevice = await DeviceAuthGate.unlockDeviceCredentials();
-      if (!mounted || !okDevice) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Não foi possível validar no dispositivo. PIN não alterado.'), backgroundColor: Colors.red),
-          );
-        }
-        return;
-      }
-    } else {
-      final esperado = await AppRepository.instance.loadAppPin();
-      if (!mounted) return;
-      final pinAtual = _pinAtualController.text.trim();
-      if (pinAtual != esperado) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('PIN atual incorreto.'), backgroundColor: Colors.red),
-        );
-        return;
-      }
-    }
-
-    await AppRepository.instance.saveAppPin(novoPin);
-    if (!mounted) return;
-
-    _pinAtualController.clear();
-    _novoPinController.clear();
-    _confirmarPinController.clear();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('PIN alterado com sucesso!'), backgroundColor: Colors.green),
-    );
-  }
 
   Future<void> _salvarConfiguracoes() async {
     final metaParse = int.tryParse(_metaController.text);
@@ -166,8 +109,8 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
     await AppRepository.instance.saveWeeklyPrize(premio);
     await AppRepository.instance.saveVibrationEnabled(_vibrationEnabled);
     await AppRepository.instance.saveVibrationIntensity(_vibrationIntensity.round().clamp(1, 3));
-    await AppRepository.instance.saveAuthModeStorage(parentAuthModeToStorage(_authMode));
     await AppRepository.instance.saveSoundTaskEnabled(_soundTask);
+
     await AppRepository.instance.saveSoundCycleEnabled(_soundCycle);
     await AppRepository.instance.saveSoundAmbientEnabled(_soundAmbient);
     await AppRepository.instance.saveSoundAmbientAnimated(_soundAmbientAnimated);
@@ -383,39 +326,15 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
                 ],
               ),
             ],
-            const SizedBox(height: 8),
-            const Text('Como entrar na área do responsável', style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 4),
-            InputDecorator(
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<ParentAuthMode>(
-                  isExpanded: true,
-                  value: _authMode,
-                  items: const [
-                    DropdownMenuItem(
-                      value: ParentAuthMode.appPinOnly,
-                      child: Text('Só PIN do app (4 dígitos)'),
-                    ),
-                    DropdownMenuItem(
-                      value: ParentAuthMode.biometricOnly,
-                      child: Text('Só biometria / rosto do celular'),
-                    ),
-                    DropdownMenuItem(
-                      value: ParentAuthMode.biometricAndAppPin,
-                      child: Text('Biometria do celular e depois PIN do app'),
-                    ),
-                  ],
-                  onChanged: (v) {
-                    if (v != null) setState(() => _authMode = v);
-                  },
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
+             const SizedBox(height: 8),
+             const Text('Configurações de acesso', style: TextStyle(fontWeight: FontWeight.w600)),
+             const SizedBox(height: 4),
+             const Padding(
+               padding: EdgeInsets.all(8.0),
+               child: Text('Este painel é protegido pela biometria ou senha do seu aparelho.'),
+             ),
+             const SizedBox(height: 16),
+
             const Text('Sons', style: TextStyle(fontWeight: FontWeight.w600)),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
@@ -517,110 +436,22 @@ class _AreaMestrePageState extends State<AreaMestrePage> {
             const Divider(),
             const SizedBox(height: 16),
             const Text('Segurança do app', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _pinAtualController,
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 4,
-              decoration: InputDecoration(
-                labelText: 'PIN atual',
-                counterText: '',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _novoPinController,
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 4,
-              decoration: InputDecoration(
-                labelText: 'Novo PIN (4 dígitos)',
-                counterText: '',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _confirmarPinController,
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 4,
-              decoration: InputDecoration(
-                labelText: 'Confirmar novo PIN',
-                counterText: '',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.indigo,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () => _alterarPin(viaRecuperacao: false),
-                    icon: const Icon(Icons.lock_reset),
-                    label: const Text('Alterar PIN'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: () => _alterarPin(viaRecuperacao: true),
-                icon: const Icon(Icons.fingerprint),
-                label: const Text('Esqueci o PIN (usar biometria/senha do celular)'),
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.teal[700],
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                onPressed: _abrirTarefas,
-                icon: const Icon(Icons.checklist),
-                label: const Text('Tarefas da criança (pontos por tarefa)', style: TextStyle(fontSize: 16)),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              okTarefas
-                  ? 'Tarefas: soma $somaT pontos — conferem com a meta.'
-                  : (snap.tarefas.isEmpty
-                      ? 'Nenhuma tarefa cadastrada. A criança usa +1 ponto por toque na tela inicial.'
-                      : 'Tarefas: soma $somaT ≠ meta ${snap.weeklyGoal}. Ajuste na tela de tarefas.'),
-              style: TextStyle(
-                fontSize: 13,
-                color: okTarefas ? Colors.green[800] : Colors.orange[900],
-              ),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueGrey[800],
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                onPressed: _salvarConfiguracoes,
-                child: const Text('Salvar configurações', style: TextStyle(fontSize: 16)),
-              ),
-            ),
-            const SizedBox(height: 36),
+             const SizedBox(height: 8),
+             SizedBox(
+               width: double.infinity,
+               height: 50,
+               child: ElevatedButton(
+                 style: ElevatedButton.styleFrom(
+                   backgroundColor: Colors.blueGrey[800],
+                   foregroundColor: Colors.white,
+                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                 ),
+                 onPressed: _salvarConfiguracoes,
+                 child: const Text('Salvar configurações', style: TextStyle(fontSize: 16)),
+               ),
+             ),
+             const SizedBox(height: 36),
+
             const Divider(),
             const SizedBox(height: 16),
             const Text(
